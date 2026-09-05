@@ -16,11 +16,10 @@ internal static class ConnectRangePatch {
     private const int MaxChainWalk = 256;
     private const float ConnectAccel = 260f;
     private const float MaxConnectSpeed = 130f;
-    private const float TurnAccel = 2600f;
-    private const float MaxTurnSpeed = 1300f;
-
-    private static readonly float TurnAccelRad = MathHelper.ToRadians(TurnAccel);
-    private static readonly float MaxTurnSpeedRad = MathHelper.ToRadians(MaxTurnSpeed);
+    private const float TurnAccel = 45.37856f;
+    private const float MaxTurnSpeed = 22.68928f;
+    private const float FullCircle = 4f;
+    private const float HalfCircle = FullCircle / 2f;
 
     private sealed class SpeedHolder {
         public float MoveSpeed;
@@ -81,7 +80,7 @@ internal static class ConnectRangePatch {
         cart.Velocity = new Vector3(direction.X * holder.MoveSpeed, direction.Y * holder.MoveSpeed, cart.Velocity.Z);
 
         float targetDirection = direction.ToFloatDirection();
-        holder.TurnSpeed = Math.Min(holder.TurnSpeed + TurnAccelRad * cart.Fdt, MaxTurnSpeedRad);
+        holder.TurnSpeed = Math.Min(holder.TurnSpeed + TurnAccel * cart.Fdt, MaxTurnSpeed);
         cart.Direction = RotateTowards(cart.Direction, targetDirection, holder.TurnSpeed * cart.Fdt, out bool reachedDirection);
 
         if (reachedDirection) {
@@ -95,14 +94,38 @@ internal static class ConnectRangePatch {
             return current;
         }
 
-        float delta = MathHelper.WrapAngle(target - current);
+        float delta = WrapDirection(target - current);
         if (Math.Abs(delta) <= maxDelta) {
             reached = true;
-            return MathHelper.WrapAngle(target);
+            return NormalizeDirection(target);
         }
 
         reached = false;
-        return MathHelper.WrapAngle(current + Math.Sign(delta) * maxDelta);
+        return NormalizeDirection(current + Math.Sign(delta) * maxDelta);
+    }
+
+    private static float WrapDirection(float direction) {
+        direction %= FullCircle;
+
+        if (direction > HalfCircle) {
+            return direction - FullCircle;
+        }
+
+        if (direction <= -HalfCircle) {
+            return direction + FullCircle;
+        }
+
+        return direction;
+    }
+
+    private static float NormalizeDirection(float direction) {
+        direction %= FullCircle;
+
+        if (direction < 0f) {
+            direction += FullCircle;
+        }
+
+        return direction;
     }
 
     private static EntityWrapper FindTarget(EntityWrapper cart) {

@@ -16,6 +16,8 @@ internal static class ModDiagnostics {
     private const long HeartbeatIntervalMs = 1000;
     private const int MaxDistinctKeysPerSave = 32;
 
+    private static readonly string[] SlotKeys = { "c1", "c2", "c3", "c4", "c5" };
+
     private static bool _environmentLogged;
     private static long _nextCensusTick;
     private static long _nextHeartbeatTick;
@@ -26,6 +28,7 @@ internal static class ModDiagnostics {
     private static int _writesDuringSave;
     private static int _insertsDuringSave;
     private static int _entitiesCreatedDuringSave;
+    private static int _entitiesRemovedDuringSave;
     private static readonly HashSet<string> KeysSeenThisSave = new HashSet<string>();
 
     internal static void Tick() {
@@ -37,16 +40,16 @@ internal static class ModDiagnostics {
             LogEnvironment();
         }
         long now = Environment.TickCount64;
-        // the tick thread is the only thing that can emit this, so its ABSENCE during a save window is itself the finding
-        if (_serializing && now >= _nextHeartbeatTick) {
+        if (_serializing && ModLog.SaveEnabled && now >= _nextHeartbeatTick) {
             _nextHeartbeatTick = now + HeartbeatIntervalMs;
-            ModLog.Warn("SAVE alive ms=" + ElapsedMs()
+            ModLog.SaveWarn("SAVE alive ms=" + ElapsedMs()
                 + " writes=" + Volatile.Read(ref _writesDuringSave)
                 + " inserts=" + Volatile.Read(ref _insertsDuringSave)
                 + " created=" + Volatile.Read(ref _entitiesCreatedDuringSave)
+                + " removed=" + Volatile.Read(ref _entitiesRemovedDuringSave)
                 + " serializerThread=" + _serializeThread);
         }
-        if (now < _nextCensusTick) {
+        if (!ModLog.CensusEnabled || now < _nextCensusTick) {
             return;
         }
         _nextCensusTick = now + CensusIntervalMs;
@@ -54,19 +57,20 @@ internal static class ModDiagnostics {
     }
 
     private static void LogEnvironment() {
-        ModLog.Info("=== ENVIRONMENT ===");
+        ModLog.Error("> BetterCarts Diagnostics are ON <");
+        ModLog.Error("=== ENVIRONMENT ===");
         AssemblyName self = typeof(ModDiagnostics).Assembly.GetName();
-        ModLog.Info("mod=" + self.Name + " " + self.Version + " runtime=" + Environment.Version
+        ModLog.Error("mod=" + self.Name + " " + self.Version + " runtime=" + Environment.Version
             + " os=" + Environment.OSVersion.VersionString + " cores=" + Environment.ProcessorCount);
         LogNeighbourAssemblies();
-        ModLog.Info("--- settings ---");
+        ModLog.Error("--- settings ---");
         foreach (ConfigEntryBase entry in ModConfig.Bound) {
             if (entry == null) {
                 continue;
             }
-            ModLog.Info("  [" + entry.Definition.Section + "] " + entry.Definition.Key + " = " + entry.BoxedValue);
+            ModLog.Error("  [" + entry.Definition.Section + "] " + entry.Definition.Key + " = " + entry.BoxedValue);
         }
-        ModLog.Info("=== END ENVIRONMENT ===");
+        ModLog.Error("=== END ENVIRONMENT ===");
     }
 
     private static void LogNeighbourAssemblies() {
@@ -90,7 +94,7 @@ internal static class ModDiagnostics {
             }
             builder.Append(name).Append(' ').Append(assembly.GetName().Version);
         }
-        ModLog.Info("assemblies=" + total + " related=[" + (builder.Length == 0 ? "none" : builder.ToString()) + "]");
+        ModLog.Error("assemblies=" + total + " related=[" + (builder.Length == 0 ? "none" : builder.ToString()) + "]");
     }
 
     private static void LogCensus() {
@@ -102,7 +106,6 @@ internal static class ModDiagnostics {
             if (system == null) {
                 continue;
             }
-            worlds++;
             int carts = 0;
             int extras = 0;
             int longest = 0;
@@ -127,8 +130,13 @@ internal static class ModDiagnostics {
                     longest = packed.Length;
                 }
             }
+            if (carts == 0) {
+                continue;
+            }
+            worlds++;
             builder.Append(" | world entities=").Append(system.EntityIdMap.Count)
                 .Append('/').Append(system.MaxEntities)
+                // HighestActive is a high-water index, not a live count, and reading it as a count produced active > entities
                 .Append(" highWater=").Append(system.HighestActive)
                 .Append(" carts=").Append(carts)
                 .Append(" extras=").Append(extras)
@@ -137,7 +145,7 @@ internal static class ModDiagnostics {
         if (worlds == 0) {
             return;
         }
-        ModLog.Info(builder.ToString());
+        ModLog.Census(builder.ToString());
     }
 
     private static int CountEntries(string packed) {
@@ -158,15 +166,14 @@ internal static class ModDiagnostics {
         return (Stopwatch.GetTimestamp() - start) * 1000L / Stopwatch.Frequency;
     }
 
+    // ---- save window ---------------------------------------------------
+
     internal static void NoteSnapshot(bool offThread, bool starting) {
-        if (!ModLog.Enabled) {
-            return;
-        }
-        ModLog.Info("SAVE snapshot " + (starting ? "start" : "end") + " offThread=" + offThread);
+        ModLog.Save("SAVE snapshot " + (starting ? "start" : "end") + " offThread=" + offThread);
     }
 
     internal static void NoteSnapshotFailed(Exception ex) {
-        ModLog.Error("SAVE snapshot FAILED - the exception below escaped the snapshot, which is a vanilla save path");
+        ModLog.Error("SAVE snapshot FAILED - the exception below escaped a vanilla save path");
         ModLog.Error(ex.ToString());
     }
 
@@ -176,31 +183,23 @@ internal static class ModDiagnostics {
         Interlocked.Exchange(ref _writesDuringSave, 0);
         Interlocked.Exchange(ref _insertsDuringSave, 0);
         Interlocked.Exchange(ref _entitiesCreatedDuringSave, 0);
+        Interlocked.Exchange(ref _entitiesRemovedDuringSave, 0);
         lock (KeysSeenThisSave) {
             KeysSeenThisSave.Clear();
         }
         _nextHeartbeatTick = Environment.TickCount64 + HeartbeatIntervalMs;
         _serializing = true;
-        if (ModLog.Enabled) {
-            ModLog.Info("SAVE serialize start");
-        }
+        ModLog.Save("SAVE serialize start");
     }
 
     internal static void NoteSerializeEnd() {
         long ms = ElapsedMs();
         _serializing = false;
-        if (!ModLog.Enabled) {
-            return;
-        }
-        int writes = Volatile.Read(ref _writesDuringSave);
-        int inserts = Volatile.Read(ref _insertsDuringSave);
-        int created = Volatile.Read(ref _entitiesCreatedDuringSave);
-        ModLog.Info("SAVE serialize end ms=" + ms + " paramWritesDuringSave=" + writes
-            + " ofWhichInserts=" + inserts + " entitiesCreated=" + created);
-        if (writes > 0) {
-            ModLog.Warn("SAVE " + writes + " entity parameter writes landed while the save was serializing"
-                + " (serializer thread " + _serializeThread + ")");
-        }
+        ModLog.Save("SAVE serialize end ms=" + ms
+            + " paramWrites=" + Volatile.Read(ref _writesDuringSave)
+            + " ofWhichInserts=" + Volatile.Read(ref _insertsDuringSave)
+            + " entitiesCreated=" + Volatile.Read(ref _entitiesCreatedDuringSave)
+            + " entitiesRemoved=" + Volatile.Read(ref _entitiesRemovedDuringSave));
     }
 
     // a postfix never runs when an exception escapes the original, which is why the fatal saves logged nothing at all
@@ -211,6 +210,7 @@ internal static class ModDiagnostics {
             + " paramWrites=" + Volatile.Read(ref _writesDuringSave)
             + " inserts=" + Volatile.Read(ref _insertsDuringSave)
             + " created=" + Volatile.Read(ref _entitiesCreatedDuringSave)
+            + " removed=" + Volatile.Read(ref _entitiesRemovedDuringSave)
             + " serializerThread=" + _serializeThread);
         ModLog.Error(ex.ToString());
         for (Exception inner = ex.InnerException; inner != null; inner = inner.InnerException) {
@@ -224,18 +224,28 @@ internal static class ModDiagnostics {
         }
     }
 
+    internal static void NoteEntityRemoved() {
+        if (_serializing) {
+            Interlocked.Increment(ref _entitiesRemovedDuringSave);
+        }
+    }
+
+    // ---- parameter writes ----------------------------------------------
+
     internal static void NoteParameterWrite(EntityWrapper entity, string key) {
-        if (!_serializing || !ModLog.Enabled) {
+        if (key == null) {
+            return;
+        }
+        bool insert = false;
+        var parameters = entity == null || entity.Controller == null ? null : entity.Controller.Parameters;
+        if (parameters != null && parameters.Dictionary != null) {
+            insert = !parameters.Dictionary.ContainsKey(key);
+        }
+        RouteByKey(entity, key, insert);
+        if (!_serializing || !ModLog.SaveEnabled) {
             return;
         }
         Interlocked.Increment(ref _writesDuringSave);
-        bool insert = false;
-        if (entity != null && entity.Controller != null) {
-            var parameters = entity.Controller.Parameters;
-            if (parameters != null && parameters.Dictionary != null) {
-                insert = !parameters.Dictionary.ContainsKey(key);
-            }
-        }
         if (insert) {
             Interlocked.Increment(ref _insertsDuringSave);
         }
@@ -245,7 +255,27 @@ internal static class ModDiagnostics {
                 return;
             }
         }
-        ModLog.Warn("PARAM WRITE DURING SAVE key=" + key + " insert=" + insert
+        ModLog.SaveWarn("SAVE param write key=" + key + " insert=" + insert
             + " ms=" + ElapsedMs() + " serializerThread=" + _serializeThread);
+    }
+
+    private static void RouteByKey(EntityWrapper entity, string key, bool insert) {
+        if (!(entity != null && entity.Controller is ServerCart2Controller)) {
+            return;
+        }
+        if (key == "following") {
+            ModLog.Chain("CHAIN follow link changed insert=" + insert);
+            return;
+        }
+        if (key == CartCargoSync.CargoKey) {
+            ModLog.Capacity("CAPACITY extra cargo written insert=" + insert);
+            return;
+        }
+        for (int i = 0; i < SlotKeys.Length; i++) {
+            if (key == SlotKeys[i]) {
+                ModLog.Pickup("PICKUP slot " + key + " changed insert=" + insert);
+                return;
+            }
+        }
     }
 }

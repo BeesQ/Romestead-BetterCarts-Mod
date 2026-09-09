@@ -26,9 +26,15 @@ internal static class ModConfig {
     internal static ConfigEntry<int> StockpileRange;
     internal static ConfigEntry<bool> StockpileWhilePulled;
     internal static ConfigEntry<bool> StockpileWhileParked;
-    internal static ConfigEntry<bool> Logging;
-    internal static ConfigEntry<bool> AdvancedLogging;
+    internal static ConfigEntry<bool> Diagnostics;
+    internal static ConfigEntry<bool> DiagSave;
+    internal static ConfigEntry<bool> DiagCensus;
+    internal static ConfigEntry<bool> DiagCapacity;
+    internal static ConfigEntry<bool> DiagPickup;
+    internal static ConfigEntry<bool> DiagChain;
+    internal static ConfigEntry<bool> DiagStateDump;
 
+    // the environment block dumps every entry this class binds, so a single log answers "what settings" without asking the reporter
     internal static readonly List<ConfigEntryBase> Bound = new List<ConfigEntryBase>();
 
     internal static void Init(ConfigFile config) {
@@ -104,12 +110,28 @@ internal static class ModConfig {
         StockpileWhileParked = Track(config.Bind("Stockpile Range", "While Parked", false,
             new ConfigDescription("Take resources while the Cart is parked (not pulled by a player).", null,
                 EntryTag("While parked", 3))));
-        Logging = Track(config.Bind("Troubleshooting", "Logging", false,
-            new ConfigDescription("ADVANCED. Writes what the mod is doing to BepInEx/LogOutput.log so a problem can be traced. Leave this off unless you are chasing a bug or someone asked you to turn it on.", null,
-                SectionTag("Troubleshooting", 10), EntryTag("Write a diagnostic log", 0))));
-        AdvancedLogging = Track(config.Bind("Troubleshooting", "Advanced Logging", false,
-            new ConfigDescription("ADVANCED. Adds a line for every Cart and every pickup, which makes the log very large very quickly. Does nothing while Logging is off. Leave this off unless you are chasing a bug or someone asked you to turn it on.", null,
-                EntryTag("Add the detailed trace", 1))));
+        // BepInEx writes the .cfg sorted alphabetically by section, so this name is what puts the section at the bottom of the file; Order 10 puts it last in Mod Settings Menu as well
+        Diagnostics = Track(config.Bind("Troubleshooting", "Diagnostics", false,
+            new ConfigDescription("ADVANCED. Master switch troubleshooting. Writes what the mod is doing to BepInEx/LogOutput.log and to BetterCarts.log next to the mod file, so a problem can be traced. Changing this takes effect after a restart (new settings will appear too), and while it is off the diagnostic code is never loaded at all. Leave it off unless you are chasing a bug or someone asked you to turn it on.", null,
+                SectionTag("Troubleshooting", 10), EntryTag("Write diagnostic logs (needs restart)", 0))));
+        DiagSave = Track(config.Bind("Troubleshooting", "Save Watch", true,
+            new ConfigDescription("Records each save: how long it took, what changed while it was running, and the full details of any save that fails. About a dozen lines per save. Start here for crashes or freezes while saving.", null,
+                EntryTag("Watch saving", 1, hidden: !Diagnostics.Value))));
+        DiagCensus = Track(config.Bind("Troubleshooting", "World Census", true,
+            new ConfigDescription("Records a periodic count of the entities, Carts and extra cargo in each world. One line every 30 seconds.", null,
+                EntryTag("Count the world periodically", 2, hidden: !Diagnostics.Value))));
+        DiagCapacity = Track(config.Bind("Troubleshooting", "Cart Capacity", true,
+            new ConfigDescription("Records Cart Capacity decisions: which Carts were adopted, what extra cargo was pinned or released, and what was sent to other players. A moderate number of lines while Carts are being loaded and unloaded.", null,
+                EntryTag("Trace Cart Capacity", 3, hidden: !Diagnostics.Value))));
+        DiagPickup = Track(config.Bind("Troubleshooting", "Cart Pickup", true,
+            new ConfigDescription("Records what Carts pick up and put down through Collect Range, Deposit Range and Stockpile Range. Busy while Carts are working.", null,
+                EntryTag("Trace pickup and deposit", 4, hidden: !Diagnostics.Value))));
+        DiagChain = Track(config.Bind("Troubleshooting", "Cart Chain", true,
+            new ConfigDescription("Records Carts connecting, disconnecting and passing overflow along the chain. Busy while you are pulling Carts around.", null,
+                EntryTag("Trace the Cart chain", 5, hidden: !Diagnostics.Value))));
+        DiagStateDump = Track(config.Bind("Troubleshooting", "Cart State Dump", false,
+            new ConfigDescription("Records the complete contents of every Cart, every tick. This produces THOUSANDS of lines per minute and will bury everything else in the log. Only turn it on if you were asked to, and turn it off again straight after.", null,
+                EntryTag("Dump full Cart state every tick", 6, hidden: !Diagnostics.Value))));
     }
 
     private static ConfigEntry<T> Track<T>(ConfigEntry<T> entry) {

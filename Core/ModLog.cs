@@ -45,6 +45,12 @@ internal static class ModLog {
         }
     }
 
+    internal static void Error(string message) {
+        if (_log != null) {
+            _log.LogError(Prefix() + message);
+        }
+    }
+
     // per-tick paths call this; the line is only emitted when its content actually changes
     internal static void OnChange(string key, string message) {
         Emit(Enabled, key, message);

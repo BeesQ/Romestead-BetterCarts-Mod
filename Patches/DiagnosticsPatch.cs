@@ -1,5 +1,5 @@
 using System;
-using System.Diagnostics;
+using System.Reflection;
 using CandideServer.Entities;
 using CandideServer.Entities.Controllers;
 using CandideServer.Saving;
@@ -22,20 +22,39 @@ internal static class DiagnosticsPatch {
             ModLog.Guard("SaveGameState.Postfix",
                 () => ModDiagnostics.NoteSnapshot(forOffThreadSerializing, starting: false));
         }
+
+        private static Exception Finalizer(Exception __exception) {
+            if (__exception != null) {
+                try {
+                    ModDiagnostics.NoteSnapshotFailed(__exception);
+                }
+                catch {
+                }
+            }
+            return __exception;
+        }
     }
 
     // the serialize runs inside this method before the file write is handed to a task, so prefix to postfix brackets the window that matters
     [HarmonyPatch(typeof(GameSaveManager), nameof(GameSaveManager.SaveGameToDirectory))]
     private static class Serialize {
-        private static void Prefix(out long __state) {
-            __state = Stopwatch.GetTimestamp();
+        private static void Prefix() {
             ModLog.Guard("SaveGameToDirectory.Prefix", ModDiagnostics.NoteSerializeStart);
         }
 
-        private static void Postfix(long __state) {
-            long ticks = Stopwatch.GetTimestamp() - __state;
-            long ms = ticks * 1000L / Stopwatch.Frequency;
-            ModLog.Guard("SaveGameToDirectory.Postfix", () => ModDiagnostics.NoteSerializeEnd(ms));
+        private static void Postfix() {
+            ModLog.Guard("SaveGameToDirectory.Postfix", ModDiagnostics.NoteSerializeEnd);
+        }
+
+        private static Exception Finalizer(Exception __exception) {
+            if (__exception != null) {
+                try {
+                    ModDiagnostics.NoteSerializeFailed(__exception);
+                }
+                catch {
+                }
+            }
+            return __exception;
         }
     }
 
@@ -43,6 +62,29 @@ internal static class DiagnosticsPatch {
     private static class ParameterWrite {
         private static void Prefix(EntityWrapper entity, string key) {
             ModLog.Guard("UpdateEntityParameter.Prefix", () => ModDiagnostics.NoteParameterWrite(entity, key));
+        }
+    }
+
+    [HarmonyPatch]
+    private static class EntityCreated {
+        private static MethodBase _target;
+
+        private static bool Prepare() {
+            if (_target == null) {
+                _target = AccessTools.Method(typeof(EntitySystem), "NewEntity");
+            }
+            if (_target == null) {
+                ModLog.Warn("DIAG entity-creation counter disabled: EntitySystem.NewEntity not found");
+            }
+            return _target != null;
+        }
+
+        private static MethodBase TargetMethod() {
+            return _target;
+        }
+
+        private static void Postfix() {
+            ModLog.Guard("NewEntity.Postfix", ModDiagnostics.NoteEntityCreated);
         }
     }
 

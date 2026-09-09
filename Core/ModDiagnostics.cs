@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Reflection;
 using System.Text;
 using System.Threading;
@@ -12,16 +13,20 @@ namespace BetterCarts;
 
 internal static class ModDiagnostics {
     private const long CensusIntervalMs = 30000;
-    private const int MaxWritesLoggedPerSave = 5;
+    private const long HeartbeatIntervalMs = 1000;
+    private const int MaxDistinctKeysPerSave = 32;
 
     private static bool _environmentLogged;
     private static long _nextCensusTick;
+    private static long _nextHeartbeatTick;
 
     private static volatile bool _serializing;
     private static int _serializeThread;
+    private static long _serializeStartTimestamp;
     private static int _writesDuringSave;
     private static int _insertsDuringSave;
-    private static int _writesLoggedThisSave;
+    private static int _entitiesCreatedDuringSave;
+    private static readonly HashSet<string> KeysSeenThisSave = new HashSet<string>();
 
     internal static void Tick() {
         if (!ModLog.Enabled) {
@@ -32,6 +37,15 @@ internal static class ModDiagnostics {
             LogEnvironment();
         }
         long now = Environment.TickCount64;
+        // the tick thread is the only thing that can emit this, so its ABSENCE during a save window is itself the finding
+        if (_serializing && now >= _nextHeartbeatTick) {
+            _nextHeartbeatTick = now + HeartbeatIntervalMs;
+            ModLog.Warn("SAVE alive ms=" + ElapsedMs()
+                + " writes=" + Volatile.Read(ref _writesDuringSave)
+                + " inserts=" + Volatile.Read(ref _insertsDuringSave)
+                + " created=" + Volatile.Read(ref _entitiesCreatedDuringSave)
+                + " serializerThread=" + _serializeThread);
+        }
         if (now < _nextCensusTick) {
             return;
         }
@@ -115,7 +129,7 @@ internal static class ModDiagnostics {
             }
             builder.Append(" | world entities=").Append(system.EntityIdMap.Count)
                 .Append('/').Append(system.MaxEntities)
-                .Append(" active=").Append(system.HighestActive)
+                .Append(" highWater=").Append(system.HighestActive)
                 .Append(" carts=").Append(carts)
                 .Append(" extras=").Append(extras)
                 .Append(" longestCargo=").Append(longest);
@@ -136,6 +150,14 @@ internal static class ModDiagnostics {
         return count;
     }
 
+    private static long ElapsedMs() {
+        long start = Interlocked.Read(ref _serializeStartTimestamp);
+        if (start == 0) {
+            return 0;
+        }
+        return (Stopwatch.GetTimestamp() - start) * 1000L / Stopwatch.Frequency;
+    }
+
     internal static void NoteSnapshot(bool offThread, bool starting) {
         if (!ModLog.Enabled) {
             return;
@@ -143,29 +165,62 @@ internal static class ModDiagnostics {
         ModLog.Info("SAVE snapshot " + (starting ? "start" : "end") + " offThread=" + offThread);
     }
 
+    internal static void NoteSnapshotFailed(Exception ex) {
+        ModLog.Error("SAVE snapshot FAILED - the exception below escaped the snapshot, which is a vanilla save path");
+        ModLog.Error(ex.ToString());
+    }
+
     internal static void NoteSerializeStart() {
         _serializeThread = Environment.CurrentManagedThreadId;
+        Interlocked.Exchange(ref _serializeStartTimestamp, Stopwatch.GetTimestamp());
         Interlocked.Exchange(ref _writesDuringSave, 0);
         Interlocked.Exchange(ref _insertsDuringSave, 0);
-        Interlocked.Exchange(ref _writesLoggedThisSave, 0);
+        Interlocked.Exchange(ref _entitiesCreatedDuringSave, 0);
+        lock (KeysSeenThisSave) {
+            KeysSeenThisSave.Clear();
+        }
+        _nextHeartbeatTick = Environment.TickCount64 + HeartbeatIntervalMs;
         _serializing = true;
         if (ModLog.Enabled) {
             ModLog.Info("SAVE serialize start");
         }
     }
 
-    internal static void NoteSerializeEnd(long elapsedMs) {
+    internal static void NoteSerializeEnd() {
+        long ms = ElapsedMs();
         _serializing = false;
         if (!ModLog.Enabled) {
             return;
         }
         int writes = Volatile.Read(ref _writesDuringSave);
         int inserts = Volatile.Read(ref _insertsDuringSave);
-        ModLog.Info("SAVE serialize end ms=" + elapsedMs + " paramWritesDuringSave=" + writes
-            + " ofWhichInserts=" + inserts);
+        int created = Volatile.Read(ref _entitiesCreatedDuringSave);
+        ModLog.Info("SAVE serialize end ms=" + ms + " paramWritesDuringSave=" + writes
+            + " ofWhichInserts=" + inserts + " entitiesCreated=" + created);
         if (writes > 0) {
             ModLog.Warn("SAVE " + writes + " entity parameter writes landed while the save was serializing"
                 + " (serializer thread " + _serializeThread + ")");
+        }
+    }
+
+    // a postfix never runs when an exception escapes the original, which is why the fatal saves logged nothing at all
+    internal static void NoteSerializeFailed(Exception ex) {
+        long ms = ElapsedMs();
+        _serializing = false;
+        ModLog.Error("SAVE serialize FAILED after ms=" + ms
+            + " paramWrites=" + Volatile.Read(ref _writesDuringSave)
+            + " inserts=" + Volatile.Read(ref _insertsDuringSave)
+            + " created=" + Volatile.Read(ref _entitiesCreatedDuringSave)
+            + " serializerThread=" + _serializeThread);
+        ModLog.Error(ex.ToString());
+        for (Exception inner = ex.InnerException; inner != null; inner = inner.InnerException) {
+            ModLog.Error("SAVE inner exception: " + inner);
+        }
+    }
+
+    internal static void NoteEntityCreated() {
+        if (_serializing) {
+            Interlocked.Increment(ref _entitiesCreatedDuringSave);
         }
     }
 
@@ -184,10 +239,13 @@ internal static class ModDiagnostics {
         if (insert) {
             Interlocked.Increment(ref _insertsDuringSave);
         }
-        if (Interlocked.Increment(ref _writesLoggedThisSave) > MaxWritesLoggedPerSave) {
-            return;
+        string tracked = key + (insert ? " insert" : string.Empty);
+        lock (KeysSeenThisSave) {
+            if (KeysSeenThisSave.Count >= MaxDistinctKeysPerSave || !KeysSeenThisSave.Add(tracked)) {
+                return;
+            }
         }
         ModLog.Warn("PARAM WRITE DURING SAVE key=" + key + " insert=" + insert
-            + " serializerThread=" + _serializeThread);
+            + " ms=" + ElapsedMs() + " serializerThread=" + _serializeThread);
     }
 }

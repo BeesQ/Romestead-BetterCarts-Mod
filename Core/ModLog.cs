@@ -34,15 +34,19 @@ internal static class ModLog {
     }
 
     internal static bool SaveEnabled { get { return Channel(ModConfig.DiagSave); } }
+    internal static bool MemoryEnabled { get { return Channel(ModConfig.DiagMemory); } }
     internal static bool CensusEnabled { get { return Channel(ModConfig.DiagCensus); } }
     internal static bool CapacityEnabled { get { return Channel(ModConfig.DiagCapacity); } }
     internal static bool PickupEnabled { get { return Channel(ModConfig.DiagPickup); } }
     internal static bool ChainEnabled { get { return Channel(ModConfig.DiagChain); } }
     internal static bool StateDumpEnabled { get { return Channel(ModConfig.DiagStateDump); } }
     internal static bool AdvancedEnabled { get { return StateDumpEnabled; } }
+    internal static bool FileEnabled { get { return Channel(ModConfig.DiagLogFile); } }
 
     internal static void Save(string message) { Emit(SaveEnabled, false, message); }
     internal static void SaveWarn(string message) { Emit(SaveEnabled, true, message); }
+    internal static void Memory(string message) { Emit(MemoryEnabled, false, message); }
+    internal static void MemoryWarn(string message) { Emit(MemoryEnabled, true, message); }
     internal static void Census(string message) { Emit(CensusEnabled, false, message); }
     internal static void Capacity(string message) { Emit(CapacityEnabled, false, message); }
     internal static void Pickup(string message) { Emit(PickupEnabled, false, message); }
@@ -150,7 +154,7 @@ internal static class ModLog {
             if (_file != null) {
                 return _file;
             }
-            if (_fileAttempted || ModConfig.Diagnostics == null || !ModConfig.Diagnostics.Value) {
+            if (_fileAttempted || !FileEnabled) {
                 return null;
             }
             _fileAttempted = true;
@@ -182,6 +186,9 @@ internal static class ModLog {
     }
 
     private static void WriteFile(string message) {
+        if (!FileEnabled) {
+            return;
+        }
         StreamWriter file = _file ?? EnsureFile();
         if (file == null) {
             return;

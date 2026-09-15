@@ -44,6 +44,9 @@ internal static class ModWatchdog {
     }
 
     internal static void NoteSaveStart() {
+        if (!ModLog.MemoryEnabled) {
+            return;
+        }
         Interlocked.Exchange(ref _saveAllocated, GC.GetTotalAllocatedBytes(false));
         long loh = LargeObjectHeapBytes();
         Interlocked.Exchange(ref _saveLohStart, loh);
@@ -62,11 +65,11 @@ internal static class ModWatchdog {
             return;
         }
         _saving = false;
-        if (!ModLog.SaveEnabled) {
+        if (!ModLog.MemoryEnabled) {
             return;
         }
         long allocated = GC.GetTotalAllocatedBytes(false) - Interlocked.Read(ref _saveAllocated);
-        ModLog.SaveWarn("WATCHDOG save cost allocatedMB=" + Mb(allocated)
+        ModLog.MemoryWarn("WATCHDOG save cost allocatedMB=" + Mb(allocated)
             + " lohStartMB=" + Mb(Interlocked.Read(ref _saveLohStart))
             + " lohPeakMB=" + Mb(Interlocked.Read(ref _saveLohPeak))
             + " lohEndMB=" + Mb(LargeObjectHeapBytes())
@@ -86,8 +89,8 @@ internal static class ModWatchdog {
             _started = true;
         }
         try {
-            if (ModLog.SaveEnabled) {
-                ModLog.Save("WATCHDOG start sampleMs=" + SampleMs
+            if (ModLog.MemoryEnabled) {
+                ModLog.Memory("WATCHDOG start sampleMs=" + SampleMs
                     + " serverGC=" + GCSettings.IsServerGC
                     + " latency=" + GCSettings.LatencyMode
                     + " heapMB=" + Mb(GC.GetTotalMemory(false))
@@ -112,7 +115,7 @@ internal static class ModWatchdog {
             long now = Environment.TickCount64;
             long wakeupGap = now - previous;
             previous = now;
-            if (!ModLog.SaveEnabled) {
+            if (!ModLog.MemoryEnabled) {
                 continue;
             }
             try {
@@ -129,7 +132,7 @@ internal static class ModWatchdog {
         bool line = false;
 
         if (overrun >= WakeupSlackMs) {
-            ModLog.SaveWarn("WATCHDOG process suspended for " + overrun
+            ModLog.MemoryWarn("WATCHDOG process suspended for " + overrun
                 + " ms - every managed thread was stopped, not just the server");
             Max(ref _saveMaxSuspend, overrun);
             line = true;
@@ -140,14 +143,14 @@ internal static class ModWatchdog {
         if (pumpGap >= PumpStallMs) {
             if (!_pumpStallOpen) {
                 _pumpStallOpen = true;
-                ModLog.SaveWarn("WATCHDOG server pump has not run for " + pumpGap
+                ModLog.MemoryWarn("WATCHDOG server pump has not run for " + pumpGap
                     + " ms while this thread is still awake - the server thread alone is blocked");
                 line = true;
             }
         }
         else if (_pumpStallOpen) {
             _pumpStallOpen = false;
-            ModLog.SaveWarn("WATCHDOG server pump recovered, it was blocked for about " + pumpGap + " ms");
+            ModLog.MemoryWarn("WATCHDOG server pump recovered, it was blocked for about " + pumpGap + " ms");
             line = true;
         }
 
@@ -172,7 +175,7 @@ internal static class ModWatchdog {
         _lastReportedGen2 = gen2;
         _nextLineMs = now + (_saving ? SaveIntervalMs : IdleIntervalMs);
         GCMemoryInfo info = GC.GetGCMemoryInfo();
-        ModLog.SaveWarn("WATCHDOG " + (_saving ? "saving" : "idle")
+        ModLog.MemoryWarn("WATCHDOG " + (_saving ? "saving" : "idle")
             + " heapMB=" + Mb(GC.GetTotalMemory(false))
             + " lohMB=" + Mb(loh)
             + " committedMB=" + Mb(info.TotalCommittedBytes)
@@ -213,6 +216,11 @@ internal static class ModWatchdog {
 
         private static bool Prepare() {
             if (ModConfig.Diagnostics == null || !ModConfig.Diagnostics.Value) {
+                return false;
+            }
+            // Memory Watch is read HERE as well as at every write site, because this prefix runs on the server tick
+            // thread: with the box off the patch is never installed and the watchdog is not in the running game at all
+            if (ModConfig.DiagMemory == null || !ModConfig.DiagMemory.Value) {
                 return false;
             }
             if (_target == null) {

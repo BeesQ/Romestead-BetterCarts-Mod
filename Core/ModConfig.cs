@@ -42,7 +42,7 @@ internal static class ModConfig {
     internal static void Init(ConfigFile config) {
         Bound.Clear();
         Enabled = Track(config.Bind("General", "Enabled", true,
-    new ConfigDescription("Enables all mod features.", null,
+            new ConfigDescription("Enables all mod features.", null,
         SectionTag("General", 0), EntryTag("All features", 0))));
         ChainOverflowEnabled = Track(config.Bind("Chain Overflow", "Enabled", true,
             new ConfigDescription("Passes items picked up by a full Cart to the next Cart in the chain with a free slot.", null,

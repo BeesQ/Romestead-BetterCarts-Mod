@@ -1,4 +1,5 @@
 using System;
+using System.Collections;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Reflection;
@@ -7,6 +8,7 @@ using System.Threading;
 using BepInEx.Configuration;
 using CandideServer.Entities;
 using CandideServer.Entities.Controllers;
+using CandideServer.Saving;
 using Shared.Entity;
 
 namespace BetterCarts;
@@ -15,12 +17,14 @@ internal static class ModDiagnostics {
     private const long CensusIntervalMs = 30000;
     private const long HeartbeatIntervalMs = 1000;
     private const int MaxDistinctKeysPerSave = 32;
+    private const int MaxSerializerErrors = 20;
 
     private static readonly string[] SlotKeys = { "c1", "c2", "c3", "c4", "c5" };
 
     private static bool _environmentLogged;
     private static long _nextCensusTick;
     private static long _nextHeartbeatTick;
+    private static bool _serializerErrorsUnavailable;
 
     private static volatile bool _serializing;
     private static int _serializeThread;
@@ -189,6 +193,7 @@ internal static class ModDiagnostics {
         }
         _nextHeartbeatTick = Environment.TickCount64 + HeartbeatIntervalMs;
         _serializing = true;
+        ModWatchdog.NoteSaveStart();
         ModLog.Save("SAVE serialize start");
     }
 
@@ -200,12 +205,15 @@ internal static class ModDiagnostics {
             + " ofWhichInserts=" + Volatile.Read(ref _insertsDuringSave)
             + " entitiesCreated=" + Volatile.Read(ref _entitiesCreatedDuringSave)
             + " entitiesRemoved=" + Volatile.Read(ref _entitiesRemovedDuringSave));
+        ModWatchdog.NoteSaveEnd();
+        LogSerializerErrors();
     }
 
     // a postfix never runs when an exception escapes the original, which is why the fatal saves logged nothing at all
     internal static void NoteSerializeFailed(Exception ex) {
         long ms = ElapsedMs();
         _serializing = false;
+        ModWatchdog.NoteSaveEnd();
         ModLog.Error("SAVE serialize FAILED after ms=" + ms
             + " paramWrites=" + Volatile.Read(ref _writesDuringSave)
             + " inserts=" + Volatile.Read(ref _insertsDuringSave)
@@ -216,6 +224,63 @@ internal static class ModDiagnostics {
         for (Exception inner = ex.InnerException; inner != null; inner = inner.InnerException) {
             ModLog.Error("SAVE inner exception: " + inner);
         }
+    }
+
+    // the serializer COLLECTS errors instead of throwing, so a save can fail, say so in chat and still
+    // return normally - which is why an observed "Error while saving world" left no trace in the log at all
+    private static void LogSerializerErrors() {
+        if (_serializerErrorsUnavailable) {
+            return;
+        }
+        try {
+            object serializer = ReadMember(typeof(GameSaveManager), null, "GameStateSaveSerializer");
+            if (serializer == null) {
+                _serializerErrorsUnavailable = true;
+                ModLog.Save("SAVE serializer errors unavailable - GameStateSaveSerializer was not readable");
+                return;
+            }
+            if (!(ReadMember(serializer.GetType(), serializer, "Errored") is bool errored)) {
+                _serializerErrorsUnavailable = true;
+                ModLog.Save("SAVE serializer errors unavailable - Errored was not readable");
+                return;
+            }
+            if (!errored) {
+                return;
+            }
+            ModLog.Error("SAVE serializer REPORTED ERRORS - the save did not throw, so this block is the only record");
+            IEnumerable errors = ReadMember(serializer.GetType(), serializer, "Errors") as IEnumerable;
+            if (errors == null) {
+                ModLog.Error("  the Errors list was not readable");
+                return;
+            }
+            int shown = 0;
+            foreach (object error in errors) {
+                shown++;
+                if (shown > MaxSerializerErrors) {
+                    ModLog.Error("  further errors suppressed");
+                    return;
+                }
+                ModLog.Error("  error " + shown + ": " + error);
+            }
+            if (shown == 0) {
+                ModLog.Error("  Errored was true but the Errors list was empty");
+            }
+        }
+        catch (Exception ex) {
+            _serializerErrorsUnavailable = true;
+            ModLog.Fault("ModDiagnostics.LogSerializerErrors", ex);
+        }
+    }
+
+    private static object ReadMember(Type owner, object instance, string name) {
+        BindingFlags flags = BindingFlags.Public | BindingFlags.NonPublic
+            | (instance == null ? BindingFlags.Static : BindingFlags.Instance);
+        PropertyInfo property = owner.GetProperty(name, flags);
+        if (property != null && property.CanRead) {
+            return property.GetValue(instance);
+        }
+        FieldInfo field = owner.GetField(name, flags);
+        return field == null ? null : field.GetValue(instance);
     }
 
     internal static void NoteEntityCreated() {

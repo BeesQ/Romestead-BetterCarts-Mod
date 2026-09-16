@@ -23,6 +23,8 @@ internal static class BucketPriorityPatch {
     private static readonly List<EntityWrapper> Cargo = new List<EntityWrapper>();
     private static readonly List<Guid> Extras = new List<Guid>();
 
+    private static bool Prepare() { return ModConfig.LoadBucketPriority.Value || ModConfig.LoadCartCapacity.Value; }
+
     private static void Postfix(EntityWrapper grabbingEntity, float radius, ref EntityWrapper __result) {
         if (!ModConfig.Enabled.Value) {
             return;
@@ -30,7 +32,10 @@ internal static class BucketPriorityPatch {
         if (grabbingEntity == null || grabbingEntity.Removed) {
             return;
         }
-        if (__result != null && !ModConfig.BucketPriorityEnabled.Value) {
+        if (__result != null && (!ModConfig.LoadBucketPriority.Value || !ModConfig.BucketPriorityEnabled.Value)) {
+            return;
+        }
+        if (__result == null && !ModConfig.LoadCartCapacity.Value) {
             return;
         }
 
@@ -46,7 +51,7 @@ internal static class BucketPriorityPatch {
             return;
         }
 
-        if (ModConfig.BucketPriorityEnabled.Value) {
+        if (ModConfig.LoadBucketPriority.Value && ModConfig.BucketPriorityEnabled.Value) {
             EntityWrapper bucket = Lowest(grabbingEntity, bucketsOnly: true);
             if (bucket != null) {
                 __result = bucket;

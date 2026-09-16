@@ -13,6 +13,8 @@ internal static class ChainOverflowPatch {
     [ThreadStatic]
     private static bool _walkingChain;
 
+    private static bool Prepare() { return ModConfig.LoadChainOverflow.Value; }
+
     private static void Postfix(ServerCart2Controller __instance, EntityWrapper entity, ref bool __result) {
         if (__result || _walkingChain) {
             return;

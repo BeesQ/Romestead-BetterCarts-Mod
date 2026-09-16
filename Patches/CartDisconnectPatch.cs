@@ -8,6 +8,8 @@ internal static class CartDisconnectPatch {
     // OnServerSetState ends with a bare assignment of the synced "following" value, so capturing FollowingId before it runs and comparing after gives a clean non-null to null edge
     [HarmonyPatch(typeof(Cart2Controller), nameof(Cart2Controller.OnServerSetState), typeof(int))]
     private static class Sync {
+        private static bool Prepare() { return ModConfig.LoadCartOverlays.Value; }
+
         private static void Prefix(Cart2Controller __instance, out Guid? __state) {
             __state = __instance.FollowingId;
         }

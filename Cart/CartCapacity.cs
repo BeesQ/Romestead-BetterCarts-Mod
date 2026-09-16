@@ -36,7 +36,7 @@ internal static class CartCapacity {
     private static bool _flagsLogged;
 
     internal static bool Enforcing {
-        get { return ModConfig.Enabled.Value && ModConfig.CartCapacityEnabled.Value; }
+        get { return ModConfig.LoadCartCapacity.Value && ModConfig.Enabled.Value && ModConfig.CartCapacityEnabled.Value; }
     }
 
     internal static bool Ejecting {

@@ -57,6 +57,8 @@ internal static class StockpileRangePatch {
 
     [HarmonyPatch(typeof(ServerMaterialStorageStackController), nameof(ServerMaterialStorageStackController.Update), typeof(GameTime))]
     private static class TakeSolidsFromOutputStacks {
+        private static bool Prepare() { return ModConfig.LoadStockpileRange.Value; }
+
         private static void Postfix(ServerMaterialStorageStackController __instance) {
             if (!ModConfig.Enabled.Value || !ModConfig.StockpileRangeEnabled.Value) {
                 return;
@@ -169,6 +171,8 @@ internal static class StockpileRangePatch {
     // the Clay Pit's vat (ServerMaterialStorageFluidContainerController) has an EMPTY server class and no Output stack, so the shared base tick is the only per-vat trigger for bucket resources
     [HarmonyPatch(typeof(AbstractController), nameof(AbstractController.Update), typeof(GameTime))]
     private static class FillBucketsFromFluidVats {
+        private static bool Prepare() { return ModConfig.LoadStockpileRange.Value; }
+
         private static void Postfix(AbstractController __instance) {
             if (__instance is ServerMaterialStorageFluidContainerController vat) {
                 TryFillBuckets(vat);
@@ -278,7 +282,7 @@ internal static class StockpileRangePatch {
         if (bucket != null) {
             return bucket;
         }
-        if (!ModConfig.ChainOverflowEnabled.Value) {
+        if (!ModConfig.LoadChainOverflow.Value || !ModConfig.ChainOverflowEnabled.Value) {
             return null;
         }
         ReuseVisited.Clear();
@@ -381,7 +385,7 @@ internal static class StockpileRangePatch {
         if (HasFreeSlot(cart)) {
             return true;
         }
-        if (!ModConfig.ChainOverflowEnabled.Value) {
+        if (!ModConfig.LoadChainOverflow.Value || !ModConfig.ChainOverflowEnabled.Value) {
             return false;
         }
         ReuseVisited.Clear();

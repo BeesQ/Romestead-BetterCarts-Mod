@@ -13,6 +13,8 @@ internal static class CartReleaseFixPatch {
 
     [HarmonyPatch(typeof(Cart2Controller), nameof(Cart2Controller.Update), typeof(GameTime))]
     private static class TrackPulledCart {
+        private static bool Prepare() { return ModConfig.LoadCartReleaseFix.Value; }
+
         private static void Postfix(Cart2Controller __instance) {
             EntityWrapper cart = __instance.Entity;
             if (cart == null) {
@@ -29,6 +31,8 @@ internal static class CartReleaseFixPatch {
 
     [HarmonyPatch(typeof(Cart2Controller), nameof(Cart2Controller.GetInteraction), typeof(EntityWrapper))]
     private static class SkipOtherCartWhilePulling {
+        private static bool Prepare() { return ModConfig.LoadCartReleaseFix.Value; }
+
         private static bool Prefix(Cart2Controller __instance, EntityWrapper otherEntity, ref Interaction __result) {
             if (!ModConfig.Enabled.Value || !ModConfig.CartReleaseFixEnabled.Value) {
                 return true;

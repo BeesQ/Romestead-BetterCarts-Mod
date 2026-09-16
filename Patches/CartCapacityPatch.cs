@@ -8,6 +8,8 @@ namespace BetterCarts.Patches;
 internal static class CartCapacityPatch {
     [HarmonyPatch(typeof(ServerCart2Controller), "PickupEntity")]
     private static class Capacity {
+        private static bool Prepare() { return ModConfig.LoadCartCapacity.Value; }
+
         // Priority.First keeps this ahead of Iron Cart's false-returning prefix; it must return true unless it deliberately blocks
         [HarmonyPriority(Priority.First)]
         private static bool Prefix(ServerCart2Controller __instance, ref bool __result, out bool __state) {
@@ -57,6 +59,8 @@ internal static class CartCapacityPatch {
 
     [HarmonyPatch(typeof(ServerCart2Controller), nameof(ServerCart2Controller.Update), typeof(GameTime))]
     private static class Extras {
+        private static bool Prepare() { return ModConfig.LoadCartCapacity.Value; }
+
         private static void Postfix(ServerCart2Controller __instance) {
             CartCargo.Tick(__instance);
         }
@@ -64,6 +68,8 @@ internal static class CartCapacityPatch {
 
     [HarmonyPatch(typeof(ServerCart2Controller), nameof(ServerCart2Controller.OnRemove))]
     private static class ReleaseOnRemove {
+        private static bool Prepare() { return ModConfig.LoadCartCapacity.Value; }
+
         private static void Postfix(ServerCart2Controller __instance) {
             CartCargo.ReleaseAll(__instance);
         }
@@ -71,6 +77,8 @@ internal static class CartCapacityPatch {
 
     [HarmonyPatch(typeof(ServerCart2Controller), nameof(ServerCart2Controller.EntityInitialize))]
     private static class Flags {
+        private static bool Prepare() { return ModConfig.LoadCartCapacity.Value; }
+
         private static void Postfix() {
             CartCapacity.NoteWorldLoaded("server");
         }

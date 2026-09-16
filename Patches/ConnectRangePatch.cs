@@ -29,6 +29,8 @@ internal static class ConnectRangePatch {
     private static readonly ConditionalWeakTable<ServerCart2Controller, SpeedHolder> Speeds =
         new ConditionalWeakTable<ServerCart2Controller, SpeedHolder>();
 
+    private static bool Prepare() { return ModConfig.LoadConnectRange.Value; }
+
     private static void Postfix(ServerCart2Controller __instance) {
         if (__instance == null) {
             return;

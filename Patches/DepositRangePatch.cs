@@ -35,6 +35,8 @@ internal static class DepositRangePatch {
     private static readonly AccessTools.FieldRef<ServerMaterialStoragePitController, IOStorageType> StorageTypeRef =
         AccessTools.FieldRefAccess<ServerMaterialStoragePitController, IOStorageType>("_storageType");
 
+    private static bool Prepare() { return ModConfig.LoadDepositRange.Value; }
+
     private static void Postfix(ServerMaterialStoragePitController __instance) {
         if (!ModConfig.Enabled.Value || !ModConfig.DepositRangeEnabled.Value) {
             return;

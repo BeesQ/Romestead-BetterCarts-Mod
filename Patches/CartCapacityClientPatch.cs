@@ -9,6 +9,8 @@ namespace BetterCarts.Patches;
 internal static class CartCapacityClientPatch {
     [HarmonyPatch(typeof(Cart2Controller), nameof(Cart2Controller.OnServerSetState))]
     private static class Sync {
+        private static bool Prepare() { return ModConfig.LoadCartCapacity.Value; }
+
         private static void Postfix(Cart2Controller __instance) {
             CartCargoClient.SyncSlots(__instance);
         }
@@ -16,6 +18,8 @@ internal static class CartCapacityClientPatch {
 
     [HarmonyPatch(typeof(Cart2Controller), nameof(Cart2Controller.Update), typeof(GameTime))]
     private static class Hold {
+        private static bool Prepare() { return ModConfig.LoadCartCapacity.Value; }
+
         private static void Postfix(Cart2Controller __instance) {
             CartCargoClient.UpdateSlots(__instance);
         }
@@ -23,6 +27,8 @@ internal static class CartCapacityClientPatch {
 
     [HarmonyPatch(typeof(Cart2Controller), nameof(Cart2Controller.OnRemove), typeof(EntityRemoveInfo))]
     private static class Release {
+        private static bool Prepare() { return ModConfig.LoadCartCapacity.Value; }
+
         private static void Postfix(Cart2Controller __instance) {
             CartCargoClient.ReleaseAll(__instance);
         }
@@ -30,6 +36,8 @@ internal static class CartCapacityClientPatch {
 
     [HarmonyPatch(typeof(Cart2Controller), nameof(Cart2Controller.EntityInitialize))]
     private static class Flags {
+        private static bool Prepare() { return ModConfig.LoadCartCapacity.Value; }
+
         private static void Postfix() {
             CartCapacity.NoteWorldLoaded("client");
         }

@@ -8,6 +8,8 @@ namespace BetterCarts.Patches;
 [HarmonyPatch(typeof(ServerCart2Controller), nameof(ServerCart2Controller.Update), typeof(GameTime))]
 internal static class CollectRangePatch
 {
+    private static bool Prepare() { return ModConfig.LoadCollectRange.Value; }
+
     private static void Postfix(ServerCart2Controller __instance)
     {
         if (!ModConfig.Enabled.Value || !ModConfig.CollectRangeEnabled.Value)

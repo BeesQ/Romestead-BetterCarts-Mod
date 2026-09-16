@@ -5,6 +5,15 @@ namespace BetterCarts;
 
 internal static class ModConfig {
     internal static ConfigEntry<bool> Enabled;
+    internal static ConfigEntry<bool> LoadChainOverflow;
+    internal static ConfigEntry<bool> LoadBucketPriority;
+    internal static ConfigEntry<bool> LoadCartReleaseFix;
+    internal static ConfigEntry<bool> LoadCartCapacity;
+    internal static ConfigEntry<bool> LoadCartOverlays;
+    internal static ConfigEntry<bool> LoadCollectRange;
+    internal static ConfigEntry<bool> LoadDepositRange;
+    internal static ConfigEntry<bool> LoadConnectRange;
+    internal static ConfigEntry<bool> LoadStockpileRange;
     internal static ConfigEntry<bool> ChainOverflowEnabled;
     internal static ConfigEntry<bool> DepositRangeEnabled;
     internal static ConfigEntry<int> DepositRange;
@@ -44,6 +53,33 @@ internal static class ModConfig {
         Enabled = Track(config.Bind("General", "Enabled", true,
             new ConfigDescription("Enables all mod features.", null,
         SectionTag("General", 0), EntryTag("All features", 0))));
+        LoadChainOverflow = Track(config.Bind("General", "Load Chain Overflow", false,
+            new ConfigDescription("Loads Chain Overflow when the game starts. When disabled, the feature is not loaded at all. Requires a restart.", null,
+                EntryTag("Load Chain Overflow (needs restart)", 1))));
+        LoadBucketPriority = Track(config.Bind("General", "Load Bucket Priority", false,
+            new ConfigDescription("Loads Bucket Priority when the game starts. When disabled, the feature is not loaded at all. Requires a restart.", null,
+                EntryTag("Load Bucket Priority (needs restart)", 2))));
+        LoadCartReleaseFix = Track(config.Bind("General", "Load Cart Release Fix", false,
+            new ConfigDescription("Loads Cart Release Fix when the game starts. When disabled, the feature is not loaded at all. Requires a restart.", null,
+                EntryTag("Load Cart Release Fix (needs restart)", 3))));
+        LoadCartCapacity = Track(config.Bind("General", "Load Cart Capacity", false,
+            new ConfigDescription("Loads Cart Capacity when the game starts. When disabled, the feature is not loaded at all. Requires a restart.", null,
+                EntryTag("Load Cart Capacity (needs restart)", 4))));
+        LoadCartOverlays = Track(config.Bind("General", "Load Cart Overlays", false,
+            new ConfigDescription("Loads Cart Overlays when the game starts. When disabled, the feature is not loaded at all. Requires a restart.", null,
+                EntryTag("Load Cart Overlays (needs restart)", 5))));
+        LoadCollectRange = Track(config.Bind("General", "Load Collect Range", false,
+            new ConfigDescription("Loads Collect Range when the game starts. When disabled, the feature is not loaded at all. Requires a restart.", null,
+                EntryTag("Load Collect Range (needs restart)", 6))));
+        LoadDepositRange = Track(config.Bind("General", "Load Deposit Range", false,
+            new ConfigDescription("Loads Deposit Range when the game starts. When disabled, the feature is not loaded at all. Requires a restart.", null,
+                EntryTag("Load Deposit Range (needs restart)", 7))));
+        LoadConnectRange = Track(config.Bind("General", "Load Connect Range", false,
+            new ConfigDescription("Loads Connect Range when the game starts. When disabled, the feature is not loaded at all. Requires a restart.", null,
+                EntryTag("Load Connect Range (needs restart)", 8))));
+        LoadStockpileRange = Track(config.Bind("General", "Load Stockpile Range", false,
+            new ConfigDescription("Loads Stockpile Range when the game starts. When disabled, the feature is not loaded at all. Requires a restart.", null,
+                EntryTag("Load Stockpile Range (needs restart)", 9))));
         ChainOverflowEnabled = Track(config.Bind("Chain Overflow", "Enabled", true,
             new ConfigDescription("Passes items picked up by a full Cart to the next Cart in the chain with a free slot.", null,
                 SectionTag("Chain Overflow", 1), EntryTag("Pass overflow along the chain", 0))));
@@ -91,7 +127,7 @@ internal static class ModConfig {
             new ConfigDescription("Shows the cargo count on Carts carrying more than 5 items.", null,
                 EntryTag("Show above vanilla capacity", 1, hidden: !CartOverlaysEnabled.Value))));
         CartOverlayShowVanilla = Track(config.Bind("Cart Overlays", "Show For Vanilla Capacity", false,
-            new ConfigDescription("Shows the cargo count on Carts carrying 1–5 items.", null,
+            new ConfigDescription("Shows the cargo count on Carts carrying 1ï¿½5 items.", null,
                 EntryTag("Show for vanilla capacity", 2, hidden: !CartOverlaysEnabled.Value))));
         CartOverlayShowEmpty = Track(config.Bind("Cart Overlays", "Show For Empty Carts", false,
             new ConfigDescription("Shows the cargo count on empty Carts.", null,

@@ -66,12 +66,19 @@ internal static class CartCapacityPatch {
         }
     }
 
-    [HarmonyPatch(typeof(ServerCart2Controller), nameof(ServerCart2Controller.OnRemove))]
+    [HarmonyPatch(typeof(ServerCart2Controller), nameof(ServerCart2Controller.OnRemove),
+       typeof(EntityRemoveInfo))]
     private static class ReleaseOnRemove {
         private static bool Prepare() { return ModConfig.LoadCartCapacity.Value; }
 
-        private static void Postfix(ServerCart2Controller __instance) {
-            CartCargo.ReleaseAll(__instance);
+        private static void Postfix(ServerCart2Controller __instance,
+            EntityRemoveInfo entityRemoveInfo) {
+            EntityRemoveType reason = entityRemoveInfo.RemoveType;
+            bool clearStoredCargo = reason != EntityRemoveType.RemoveFromSimulation
+                && reason != EntityRemoveType.Unloaded
+                && reason != EntityRemoveType.ChangingWorld;
+
+            CartCargo.ReleaseAll(__instance, clearStoredCargo);
         }
     }
 

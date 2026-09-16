@@ -1,15 +1,17 @@
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Runtime.CompilerServices;
-using System.Text;
+using CandideServer;
 using CandideServer.Entities;
 using CandideServer.Entities.Controllers;
+using CandideServer.Helpers;
 using CandideServer.SyncStrategies;
 using CandideServer.World;
 using Microsoft.Xna.Framework;
 using Shared.Entity;
 using Shared.Entity.Components;
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Runtime.CompilerServices;
+using System.Text;
 
 namespace BetterCarts;
 
@@ -44,6 +46,7 @@ internal static class CartCargo {
     private static readonly List<EntityWrapper> ReuseDrop = new List<EntityWrapper>();
     private static readonly List<Guid> ReuseOrder = new List<Guid>();
     private static readonly List<Guid> ReuseAdopt = new List<Guid>();
+    private static readonly HashSet<Guid> ReuseAdoptSeen = new HashSet<Guid>();
     private static readonly HashSet<Guid> ReuseSlotted = new HashSet<Guid>();
 
     // Stockpile Range's capacity pre-check. A carrier COUNT is exact for every mod's extra slots, unlike reading Carried1..5, which caps every cart at the vanilla five no matter what Cart Capacity allows
@@ -132,7 +135,7 @@ internal static class CartCargo {
     }
 
     // vanilla OnRemove only clears the five slots it knows about, so everything the mod pinned has to be freed here or it is stranded in the save
-    internal static void ReleaseAll(ServerCart2Controller cart) {
+    internal static void ReleaseAll(ServerCart2Controller cart, bool clearStoredCargo = true) {
         CartState state = States.GetOrCreateValue(cart);
         state.Extras.Clear();
         state.OccupiedStamp = -1;
@@ -146,7 +149,9 @@ internal static class CartCargo {
                 Release(cartEntity, item);
             }
         }
-        Publish(cartEntity, state);
+        if (clearStoredCargo) {
+            Publish(cartEntity, state);
+        }
     }
 
     // a Cart loaded from the save already knows its extras from the parameter, so adoption is exact instead of inferred from whatever happens to be carried
@@ -163,7 +168,7 @@ internal static class CartCargo {
         if (!string.IsNullOrEmpty(stored)) {
             ModLog.Advanced("ADOPT cart=" + Short(cart.Entity.Id) + " bc_cargo=\"" + stored + "\"");
         }
-        CartCargoSync.Unpack(stored, ReuseAdopt);
+        CartCargoSync.Unpack(stored, ReuseAdopt, ReuseAdoptSeen);
         state.Extras.Clear();
         foreach (Guid id in ReuseAdopt) {
             state.Extras.Add(id);
@@ -184,6 +189,12 @@ internal static class CartCargo {
         for (int i = state.Extras.Count - 1; i >= 0; i--) {
             EntityWrapper item = cartEntity.System.GetEntityById(state.Extras[i]);
             if (item == null || item.Removed) {
+                // A saved entity can exist without an active simulation wrapper.
+                if (ServerGameState.Entities.ContainsKey(state.Extras[i])) {
+                    continue;
+                }
+
+                // Its authoritative model is gone too.
                 state.Extras.RemoveAt(i);
                 changed = true;
                 continue;
@@ -212,6 +223,21 @@ internal static class CartCargo {
             return;
         }
         CollectCarried(cart, ReuseSweep);
+
+        // A spatial query discovers cargo; it must not erase known membership.
+        foreach (Guid id in state.Extras) {
+            EntityWrapper item = cartEntity.System.GetEntityById(id);
+            if (item == null || item.Removed) {
+                // HoldExtras retained a still-existing server model. Defer this
+                // reconciliation until its wrapper returns instead of dropping IDs.
+                return;
+            }
+
+            if (item.CarrierId == cartEntity.Id && Find(ReuseSweep, id) == null) {
+                ReuseSweep.Add(item);
+            }
+        }
+
         DumpSweep(cart, cartEntity);
 
         // cargo the mod pinned carries no slot parameter; vanilla c1..c5 and other mods' extra slots all do, so a parameter lookup separates them without knowing any mod's keys
@@ -224,9 +250,10 @@ internal static class CartCargo {
 
         bool enforced = CartCapacity.TryGetEnforcedCapacity(cartEntity, out int capacity);
         int slotted = ReuseSweep.Count - ReuseUnslotted.Count;
-        int keep = enforced
-            ? Math.Max(0, Math.Min(Math.Min(ReuseUnslotted.Count, CartCargoSync.MaxExtras), capacity - slotted))
-            : 0;
+        int keep = ReuseUnslotted.Count;
+        if (enforced && CartCapacity.Ejecting) {
+            keep = Math.Max(0, Math.Min(ReuseUnslotted.Count, capacity - slotted));
+        }
 
         StableOrder(state, ReuseUnslotted);
         state.Extras.Clear();
@@ -455,6 +482,14 @@ internal static class CartCargo {
         item.NoEntityCollision = true;
         item.NoTerrainCollision = true;
         item.CarrierId = cartEntity.Id;
+
+        ServerEntityModel model = item.ToServerEntity();
+        if (model != null) {
+            model.IsThrown = false;
+            model.ThrowerId = null;
+            model.ThrownCastSpellArgs = null;
+            model.KillWhenThrowHit = false;
+        }
     }
 
     private static void Release(EntityWrapper cartEntity, EntityWrapper item) {

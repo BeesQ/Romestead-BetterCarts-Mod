@@ -28,6 +28,7 @@ internal static class CartCargoClient {
         new ConditionalWeakTable<Cart2Controller, List<Guid>>();
 
     private static readonly List<Guid> ReuseIncoming = new List<Guid>();
+    private static readonly HashSet<Guid> ReuseIncomingSeen = new HashSet<Guid>();
     private static readonly ConditionalWeakTable<Cart2Controller, string[]> LastRaw =
         new ConditionalWeakTable<Cart2Controller, string[]>();
 
@@ -47,7 +48,7 @@ internal static class CartCargoClient {
         bool firstSync = previous[0] == null;
         previous[0] = stored;
         ModLog.Advanced("CLIENT SYNC cart=" + cart.Entity.Id + " bc_cargo=\"" + stored + "\" had=" + slots.Count);
-        CartCargoSync.Unpack(stored, ReuseIncoming);
+        CartCargoSync.Unpack(stored, ReuseIncoming, ReuseIncomingSeen);
         foreach (Guid id in slots) {
             if (!ReuseIncoming.Contains(id)) {
                 ReleaseOne(cart, id);
@@ -70,33 +71,37 @@ internal static class CartCargoClient {
     }
 
     internal static void UpdateSlots(Cart2Controller cart) {
-        // SyncSlots also runs from the OnServerSetState postfix; polling here as well catches any parameter change that arrives without it, and costs one string compare when nothing moved
-        SyncSlots(cart);
-        List<Guid> slots = Slots.GetOrCreateValue(cart);
-        if (slots.Count == 0) {
+        EntityWrapper cartEntity = cart.Entity;
+        if (cartEntity == null || cartEntity.Removed) {
             return;
         }
-        for (int i = slots.Count - 1; i >= 0; i--) {
-            if (!GameState.Entities.TryGetValue(slots[i], out EntityWrapper item)) {
-                slots.RemoveAt(i);
+
+        SyncSlots(cart);
+        List<Guid> slots = Slots.GetOrCreateValue(cart);
+
+        for (int i = 0; i < slots.Count; i++) {
+            if (!GameState.Entities.TryGetValue(slots[i], out EntityWrapper item)
+                || item == null || item.Removed) {
+                // Retain the authoritative ID and retry later.
                 continue;
             }
-            // the local player grabbed it; vanilla UpdateSlot defers to the player the same way, and the server drops it from bc_cargo on its next sweep
+
             if (item.CarrierId == GameState.LocalPlayer.EntityId) {
-                ModLog.Advanced("CLIENT yield " + item.Id + " to local player");
-                slots.RemoveAt(i);
+                item.NoEntityCollision = false;
+                item.NoTerrainCollision = false;
                 continue;
             }
+
+            if (item.CarrierId.HasValue && item.CarrierId != cartEntity.Id) {
+                continue;
+            }
+
             item.IsThrown = false;
             item.ThrowerId = null;
             item.NoEntityCollision = true;
             item.NoTerrainCollision = true;
-            item.CarrierId = cart.Entity.Id;
-        }
-        for (int i = 0; i < slots.Count; i++) {
-            if (GameState.Entities.TryGetValue(slots[i], out EntityWrapper item)) {
-                Place(cart, item, i);
-            }
+            item.CarrierId = cartEntity.Id;
+            Place(cart, item, i);
         }
     }
 

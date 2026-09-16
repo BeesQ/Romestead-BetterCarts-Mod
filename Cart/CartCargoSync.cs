@@ -25,15 +25,24 @@ internal static class CartCargoSync {
         return builder.ToString();
     }
 
-    internal static void Unpack(string raw, List<Guid> into) {
+    // the caller owns seen: on a host the server and client halves run on different threads, so one shared set here would race
+    internal static void Unpack(string raw, List<Guid> into, HashSet<Guid> seen) {
         into.Clear();
+        seen.Clear();
         if (string.IsNullOrEmpty(raw)) {
             return;
         }
-        foreach (string part in raw.Split(Separator)) {
-            if (part.Length != 0 && Guid.TryParse(part, out Guid id) && !into.Contains(id)) {
+        ReadOnlySpan<char> remaining = raw.AsSpan();
+        while (!remaining.IsEmpty) {
+            int separatorIndex = remaining.IndexOf(Separator);
+            ReadOnlySpan<char> part = separatorIndex >= 0 ? remaining.Slice(0, separatorIndex) : remaining;
+            if (Guid.TryParse(part, out Guid id) && seen.Add(id)) {
                 into.Add(id);
             }
+            if (separatorIndex < 0) {
+                break;
+            }
+            remaining = remaining.Slice(separatorIndex + 1);
         }
     }
 }

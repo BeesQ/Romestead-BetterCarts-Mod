@@ -22,6 +22,7 @@ internal static class BucketPriorityPatch {
 
     private static readonly List<EntityWrapper> Cargo = new List<EntityWrapper>();
     private static readonly List<Guid> Extras = new List<Guid>();
+    private static readonly HashSet<Guid> ExtrasSeen = new HashSet<Guid>();
 
     private static bool Prepare() { return ModConfig.LoadBucketPriority.Value || ModConfig.LoadCartCapacity.Value; }
 
@@ -94,7 +95,7 @@ internal static class BucketPriorityPatch {
 
     private static void CollectCargo(EntityWrapper cart) {
         Cargo.Clear();
-        CartCargoSync.Unpack(cart.Controller.Parameters.GetString(CartCargoSync.CargoKey), Extras);
+        CartCargoSync.Unpack(cart.Controller.Parameters.GetString(CartCargoSync.CargoKey), Extras, ExtrasSeen);
 
         foreach (EntityWrapper item in cart.System.GetEntitiesTouchingCircleArea(
                      cart.Position2, CargoScanRadius,

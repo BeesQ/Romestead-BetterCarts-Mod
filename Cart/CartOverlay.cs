@@ -55,6 +55,11 @@ internal static class CartOverlay {
     private sealed class OverlayState {
         internal int Count = -1;
         internal string Text = string.Empty;
+        internal string MeasuredText;
+        internal StaticSpriteFont MeasuredFont;
+        internal float MeasuredScale;
+        internal float TextWidth;
+        internal float TextHeight;
     }
 
     private static readonly ConditionalWeakTable<Cart2Controller, OverlayState> States =
@@ -62,6 +67,7 @@ internal static class CartOverlay {
 
     private static readonly HashSet<Guid> ReuseIds = new HashSet<Guid>();
     private static readonly List<Guid> ReuseExtras = new List<Guid>();
+    private static readonly HashSet<Guid> ReuseExtrasSeen = new HashSet<Guid>();
 
     internal static bool Showing {
         get {
@@ -103,6 +109,7 @@ internal static class CartOverlay {
         cull *= cull;
         float scale = Globals.InterfaceScale * TextScale;
         Vector2 scaleVector = new Vector2(scale, scale);
+        Vector2? scaleArgument = scaleVector;
         Vector2 anchorOffset = new Vector2(0f, -AnchorHeight);
 
         foreach (KeyValuePair<Cart2Controller, OverlayState> pair in States) {
@@ -128,21 +135,40 @@ internal static class CartOverlay {
             Vector2 position = Vector2.Transform(anchor, cameraMatrix);
             position.X = MathF.Round(position.X);
             position.Y = MathF.Round(position.Y);
+            Measure(state, scale, scaleVector);
+            float halfWidth = state.TextWidth / 2f;
             if (DrawPlate) {
-                // X2 and Y2 are width and height ONLY because the measured position is Vector2.Zero - pass a real position and they become far-edge coordinates instead
-                Bounds bounds = Font.TextBounds(state.Text, Vector2.Zero, scaleVector);
-                float plateWidth = bounds.X2 + PlatePaddingX;
-                float plateHeight = bounds.Y2 + PlatePaddingY;
+                float plateWidth = state.TextWidth + PlatePaddingX;
+                float plateHeight = state.TextHeight + PlatePaddingY;
                 batch.DrawRect(position - new Vector2(plateWidth / 2f, 1f), plateWidth, plateHeight, PlateColor);
             }
             if (DrawShadow) {
-                Font.DrawHorizontallyCentered(batch, state.Text, position + new Vector2(ShadowOffset, ShadowOffset), scale, ShadowColor);
-                Font.DrawHorizontallyCentered(batch, state.Text, position + new Vector2(ShadowOffset, -ShadowOffset), scale, ShadowColor);
-                Font.DrawHorizontallyCentered(batch, state.Text, position + new Vector2(-ShadowOffset, ShadowOffset), scale, ShadowColor);
-                Font.DrawHorizontallyCentered(batch, state.Text, position + new Vector2(-ShadowOffset, -ShadowOffset), scale, ShadowColor);
+                DrawCentered(batch, state.Text, position + new Vector2(ShadowOffset, ShadowOffset), halfWidth, scaleArgument, ShadowColor);
+                DrawCentered(batch, state.Text, position + new Vector2(ShadowOffset, -ShadowOffset), halfWidth, scaleArgument, ShadowColor);
+                DrawCentered(batch, state.Text, position + new Vector2(-ShadowOffset, ShadowOffset), halfWidth, scaleArgument, ShadowColor);
+                DrawCentered(batch, state.Text, position + new Vector2(-ShadowOffset, -ShadowOffset), halfWidth, scaleArgument, ShadowColor);
             }
-            Font.DrawHorizontallyCentered(batch, state.Text, position, scale, TextColor);
+            DrawCentered(batch, state.Text, position, halfWidth, scaleArgument, TextColor);
         }
+    }
+
+    private static void Measure(OverlayState state, float scale, Vector2 scaleVector) {
+        if (ReferenceEquals(state.MeasuredText, state.Text) && ReferenceEquals(state.MeasuredFont, Font)
+            && state.MeasuredScale == scale) {
+            return;
+        }
+        // X2 and Y2 are width and height ONLY because the measured position is Vector2.Zero - pass a real position and they become far-edge coordinates instead
+        Bounds bounds = Font.TextBounds(state.Text, Vector2.Zero, scaleVector);
+        state.TextWidth = bounds.X2;
+        state.TextHeight = bounds.Y2;
+        state.MeasuredText = state.Text;
+        state.MeasuredFont = Font;
+        state.MeasuredScale = scale;
+    }
+
+    // the game's DrawHorizontallyCentered minus its TextBounds call, which it repeats on every draw - five measurements per label per frame with the shadow on. Same DrawText arguments, so the output is pixel-identical
+    private static void DrawCentered(SpriteBatch batch, string text, Vector2 position, float halfWidth, Vector2? scale, Color color) {
+        Font.DrawText(batch, text, new Vector2(position.X - halfWidth, position.Y), color, 0f, default(Vector2), scale);
     }
 
     private static bool Visible(int count) {
@@ -173,7 +199,7 @@ internal static class CartOverlay {
                 }
             }
         }
-        CartCargoSync.Unpack(parameters.GetString(CartCargoSync.CargoKey, string.Empty), ReuseExtras);
+        CartCargoSync.Unpack(parameters.GetString(CartCargoSync.CargoKey, string.Empty), ReuseExtras, ReuseExtrasSeen);
         foreach (Guid id in ReuseExtras) {
             AddIfCarried(cartEntity, id);
         }

@@ -127,7 +127,7 @@ internal static class ModConfig {
             new ConfigDescription("Shows the cargo count on Carts carrying more than 5 items.", null,
                 EntryTag("Show above vanilla capacity", 1, hidden: !CartOverlaysEnabled.Value))));
         CartOverlayShowVanilla = Track(config.Bind("Cart Overlays", "Show For Vanilla Capacity", false,
-            new ConfigDescription("Shows the cargo count on Carts carrying 1�5 items.", null,
+            new ConfigDescription("Shows the cargo count on Carts carrying 1-5 items.", null,
                 EntryTag("Show for vanilla capacity", 2, hidden: !CartOverlaysEnabled.Value))));
         CartOverlayShowEmpty = Track(config.Bind("Cart Overlays", "Show For Empty Carts", false,
             new ConfigDescription("Shows the cargo count on empty Carts.", null,

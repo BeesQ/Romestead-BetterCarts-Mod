@@ -52,6 +52,13 @@ internal static class CartOverlay {
     // Viewport cull
     private const float ViewportCullFactor = 0.8f;
 
+    private const int RefreshIntervalMs = 150;
+
+    private struct ParsedParameter {
+        internal string Raw;
+        internal Guid? Id;
+    }
+
     private sealed class OverlayState {
         internal int Count = -1;
         internal string Text = string.Empty;
@@ -60,14 +67,19 @@ internal static class CartOverlay {
         internal float MeasuredScale;
         internal float TextWidth;
         internal float TextHeight;
+        internal long NextRefreshTick;
+        internal string CargoRaw;
+        internal readonly List<Guid> Extras = new List<Guid>();
+        internal readonly HashSet<Guid> ExtrasSeen = new HashSet<Guid>();
+        internal readonly Dictionary<string, ParsedParameter> Parameters =
+            new Dictionary<string, ParsedParameter>(StringComparer.Ordinal);
+        internal readonly HashSet<string> SeenKeys = new HashSet<string>(StringComparer.Ordinal);
+        internal readonly List<string> RemovedKeys = new List<string>();
+        internal readonly HashSet<Guid> Candidates = new HashSet<Guid>();
     }
 
     private static readonly ConditionalWeakTable<Cart2Controller, OverlayState> States =
         new ConditionalWeakTable<Cart2Controller, OverlayState>();
-
-    private static readonly HashSet<Guid> ReuseIds = new HashSet<Guid>();
-    private static readonly List<Guid> ReuseExtras = new List<Guid>();
-    private static readonly HashSet<Guid> ReuseExtrasSeen = new HashSet<Guid>();
 
     internal static bool Showing {
         get {
@@ -84,18 +96,37 @@ internal static class CartOverlay {
     }
 
     internal static void Track(Cart2Controller cart) {
-        if (cart == null || !Showing) {
+        if (cart == null) {
+            return;
+        }
+        if (!Showing) {
+            if (States.TryGetValue(cart, out OverlayState hidden)) {
+                hidden.NextRefreshTick = 0;
+                hidden.Count = -1;
+            }
             return;
         }
         EntityWrapper cartEntity = cart.Entity;
         if (cartEntity == null || cartEntity.Removed) {
+            Forget(cart);
             return;
         }
         OverlayState state = States.GetOrCreateValue(cart);
-        int count = CountCargo(cart, cartEntity);
+        long now = Environment.TickCount64;
+        if (now < state.NextRefreshTick) {
+            return;
+        }
+        state.NextRefreshTick = now + RefreshIntervalMs;
+        int count = CountCargo(cart, cartEntity, state);
         if (count != state.Count) {
             state.Count = count;
             state.Text = count.ToString(CultureInfo.InvariantCulture);
+        }
+    }
+
+    internal static void Forget(Cart2Controller cart) {
+        if (cart != null) {
+            States.Remove(cart);
         }
     }
 
@@ -182,38 +213,61 @@ internal static class CartOverlay {
     }
 
     // a cart can name the SAME item in several slot parameters, so counting entries reports five for a cart holding two. Distinct ids are the only correct count, and CarrierId is what separates cargo from the other Guids a cart stores
-    private static int CountCargo(Cart2Controller cart, EntityWrapper cartEntity) {
-        ReuseIds.Clear();
+    private static int CountCargo(Cart2Controller cart, EntityWrapper cartEntity, OverlayState state) {
         var parameters = cart.Parameters;
         if (parameters == null) {
             return 0;
         }
+        string raw = parameters.GetString(CartCargoSync.CargoKey, string.Empty);
+        if (!string.Equals(state.CargoRaw, raw, StringComparison.Ordinal)) {
+            CartCargoSync.Unpack(raw, state.Extras, state.ExtrasSeen);
+            state.CargoRaw = raw;
+        }
+
+        state.SeenKeys.Clear();
         var dictionary = parameters.Dictionary;
         if (dictionary != null) {
             foreach (var pair in dictionary) {
                 if (string.Equals(pair.Key, CartCargoSync.CargoKey, StringComparison.Ordinal)) {
                     continue;
                 }
-                if (Guid.TryParse(pair.Value, out Guid slotted)) {
-                    AddIfCarried(cartEntity, slotted);
+                state.SeenKeys.Add(pair.Key);
+                if (!state.Parameters.TryGetValue(pair.Key, out ParsedParameter parsed)
+                    || !string.Equals(parsed.Raw, pair.Value, StringComparison.Ordinal)) {
+                    parsed.Raw = pair.Value;
+                    parsed.Id = Guid.TryParse(pair.Value, out Guid id) ? id : (Guid?)null;
+                    state.Parameters[pair.Key] = parsed;
                 }
             }
         }
-        CartCargoSync.Unpack(parameters.GetString(CartCargoSync.CargoKey, string.Empty), ReuseExtras, ReuseExtrasSeen);
-        foreach (Guid id in ReuseExtras) {
-            AddIfCarried(cartEntity, id);
-        }
-        return ReuseIds.Count;
-    }
 
-    private static void AddIfCarried(EntityWrapper cartEntity, Guid id) {
-        if (!GameState.Entities.TryGetValue(id, out EntityWrapper item)) {
-            return;
+        state.RemovedKeys.Clear();
+        state.Candidates.Clear();
+        foreach (var pair in state.Parameters) {
+            if (!state.SeenKeys.Contains(pair.Key)) {
+                state.RemovedKeys.Add(pair.Key);
+            }
+            else if (pair.Value.Id.HasValue) {
+                state.Candidates.Add(pair.Value.Id.Value);
+            }
         }
-        if (item == null || item.Removed || !item.Carriable || item.CarrierId != cartEntity.Id) {
-            return;
+        foreach (string key in state.RemovedKeys) {
+            state.Parameters.Remove(key);
         }
-        ReuseIds.Add(id);
+        state.RemovedKeys.Clear();
+        foreach (Guid id in state.Extras) {
+            state.Candidates.Add(id);
+        }
+
+        int count = 0;
+        // Resolve every scheduled refresh, even with unchanged parameters. Late arrivals stay candidates.
+        foreach (Guid id in state.Candidates) {
+            if (GameState.Entities.TryGetValue(id, out EntityWrapper item)
+                && item != null && !item.Removed && item.Carriable && item.CarrierId == cartEntity.Id) {
+                count++;
+            }
+        }
+        return count;
     }
 
     private static bool Flag(BepInEx.Configuration.ConfigEntry<bool> entry) {

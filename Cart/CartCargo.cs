@@ -61,6 +61,7 @@ internal static class CartCargo {
     // vanilla runs PickupEntity for every touching entity every tick, so the count is memoized and only invalidated when it really changes
     internal static int GetOccupied(ServerCart2Controller cart) {
         CartState state = States.GetOrCreateValue(cart);
+        Adopt(cart, state);
         long now = Environment.TickCount64;
         if (state.OccupiedStamp == now) {
             return state.Occupied;
@@ -103,15 +104,19 @@ internal static class CartCargo {
     }
 
     internal static bool CanTakeExtra(ServerCart2Controller cart) {
-        return States.GetOrCreateValue(cart).Extras.Count < CartCargoSync.MaxExtras;
+        CartState state = States.GetOrCreateValue(cart);
+        Adopt(cart, state);
+        return state.Extras.Count < CartCargoSync.MaxExtras;
     }
 
     internal static void PinExtra(ServerCart2Controller cart, EntityWrapper item) {
         EntityWrapper cartEntity = cart.Entity;
-        if (cartEntity == null || item == null) {
+        if (cartEntity == null || cartEntity.Removed || item == null || item.Removed
+            || (item.CarrierId.HasValue && item.CarrierId != cartEntity.Id)) {
             return;
         }
         CartState state = States.GetOrCreateValue(cart);
+        Adopt(cart, state);
         Pin(cartEntity, item);
         if (!state.Extras.Contains(item.Id)) {
             state.Extras.Add(item.Id);
@@ -159,11 +164,11 @@ internal static class CartCargo {
         if (state.Adopted) {
             return;
         }
-        state.Adopted = true;
         var parameters = cart.Parameters;
-        if (parameters == null) {
+        if (parameters == null || cart.Entity == null || cart.Entity.Removed) {
             return;
         }
+        state.Adopted = true;
         string stored = parameters.GetString(CartCargoSync.CargoKey, string.Empty);
         if (!string.IsNullOrEmpty(stored)) {
             ModLog.Advanced("ADOPT cart=" + Short(cart.Entity.Id) + " bc_cargo=\"" + stored + "\"");
@@ -477,11 +482,15 @@ internal static class CartCargo {
     }
 
     private static void Pin(EntityWrapper cartEntity, EntityWrapper item) {
-        item.IsThrown = false;
-        item.ThrowerId = null;
+        ClearThrowState(item);
         item.NoEntityCollision = true;
         item.NoTerrainCollision = true;
         item.CarrierId = cartEntity.Id;
+    }
+
+    private static void ClearThrowState(EntityWrapper item) {
+        item.IsThrown = false;
+        item.ThrowerId = null;
 
         ServerEntityModel model = item.ToServerEntity();
         if (model != null) {

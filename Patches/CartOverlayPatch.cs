@@ -3,6 +3,7 @@ using Candide.LegacyUI;
 using HarmonyLib;
 using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Graphics;
+using Shared.Entity;
 
 namespace BetterCarts.Patches;
 
@@ -14,6 +15,15 @@ internal static class CartOverlayPatch {
 
         private static void Postfix(Cart2Controller __instance) {
             CartOverlay.Track(__instance);
+        }
+    }
+
+    [HarmonyPatch(typeof(Cart2Controller), nameof(Cart2Controller.OnRemove), typeof(EntityRemoveInfo))]
+    private static class Forget {
+        private static bool Prepare() { return ModConfig.LoadCartOverlays.Value; }
+
+        private static void Postfix(Cart2Controller __instance) {
+            CartOverlay.Forget(__instance);
         }
     }
 

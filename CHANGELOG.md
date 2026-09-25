@@ -1,3 +1,12 @@
+## 1.4.2
+
+- Added Troubleshooting Mode (off by default): after a restart it shows diagnostic logging for bug reports and a Load switch for each feature. Memory monitoring and the separate log file stay OFF unless turned on
+- The Cart Overlays count now updates as soon as a Cart takes or drops an item
+- Fixed Connect Range jolting Carts to a new direction, joining players sometimes seeing extra cargo on the ground, and thrown items keeping their thrown state in the save
+- Extra cargo is no longer dropped when a Cart is temporarily unloaded, or when Cart Capacity or Eject Overflow is turned off
+- Better performance with many Carts or high capacities
+- Added a Known Issues section to the mod page, plus small text changes
+
 ## 1.4.1
 
 - Fixed the Disconnect Message description

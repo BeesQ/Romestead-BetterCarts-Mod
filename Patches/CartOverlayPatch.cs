@@ -13,8 +13,20 @@ internal static class CartOverlayPatch {
     private static class Track {
         private static bool Prepare() { return ModConfig.LoadCartOverlays.Value; }
 
+        // Low runs this after the client cargo pin on the same tick, so a recount never sees extras whose CarrierId is not set yet
+        [HarmonyPriority(Priority.Low)]
         private static void Postfix(Cart2Controller __instance) {
             CartOverlay.Track(__instance);
+        }
+    }
+
+    // every cargo change reaches the client as a parameter sync, the host included, so this is where a take or drop shows up first
+    [HarmonyPatch(typeof(Cart2Controller), nameof(Cart2Controller.OnServerSetState), typeof(int))]
+    private static class Refresh {
+        private static bool Prepare() { return ModConfig.LoadCartOverlays.Value; }
+
+        private static void Postfix(Cart2Controller __instance) {
+            CartOverlay.MarkDirty(__instance);
         }
     }
 

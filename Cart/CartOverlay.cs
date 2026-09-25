@@ -137,6 +137,12 @@ internal static class CartOverlay {
         }
     }
 
+    internal static void MarkDirty(Cart2Controller cart) {
+        if (cart != null && States.TryGetValue(cart, out OverlayState state)) {
+            state.NextRefreshTick = 0;
+        }
+    }
+
     internal static void Forget(Cart2Controller cart) {
         if (cart != null && States.TryGetValue(cart, out OverlayState state)) {
             States.Remove(cart);

@@ -1,10 +1,11 @@
-[url=https://github.com/BeesQ/Romestead-BetterCarts-Mod/releases][img]https://img.shields.io/github/v/release/BeesQ/Romestead-BetterCarts-Mod?style=for-the-badge&logo=github&logoColor=white&color=blue[/img][/url][url=https://store.steampowered.com/app/1805320/Romestead][img]https://img.shields.io/badge/Romestead-0.26.1-blue?style=for-the-badge&logo=steam&logoColor=white[/img][/url][url=https://thunderstore.io/c/romestead/p/BeesQ/BetterCarts][img]https://img.shields.io/thunderstore/dt/BeesQ/BetterCarts?style=for-the-badge&logo=thunderstore&logoColor=white&color=brightgreen[/img][/url][url=https://raw.githubusercontent.com/BeesQ/Romestead-BetterCarts-Mod/939b0f4339ef7f592d6611eab6e476e13f23dcda/LICENSE.txt][img]https://img.shields.io/github/license/BeesQ/Romestead-BetterCarts-Mod?style=for-the-badge&logo=github&logoColor=white&color=orange[/img][/url]
+[url=https://github.com/BeesQ/Romestead-BetterCarts-Mod/releases][img]https://img.shields.io/github/v/release/BeesQ/Romestead-BetterCarts-Mod?style=for-the-badge&logo=github&logoColor=white&color=blue[/img][/url] [url=https://store.steampowered.com/app/1805320/Romestead][img]https://img.shields.io/badge/Romestead-0.26.1-blue?style=for-the-badge&logo=steam&logoColor=white[/img][/url] [url=https://thunderstore.io/c/romestead/p/BeesQ/BetterCarts][img]https://img.shields.io/thunderstore/dt/BeesQ/BetterCarts?style=for-the-badge&logo=thunderstore&logoColor=white&color=brightgreen[/img][/url] [url=https://raw.githubusercontent.com/BeesQ/Romestead-BetterCarts-Mod/939b0f4339ef7f592d6611eab6e476e13f23dcda/LICENSE.txt][img]https://img.shields.io/github/license/BeesQ/Romestead-BetterCarts-Mod?style=for-the-badge&logo=github&logoColor=white&color=orange[/img][/url]
 
 [img]https://raw.githubusercontent.com/BeesQ/Romestead-BetterCarts-Mod/939b0f4339ef7f592d6611eab6e476e13f23dcda/packaging/assets/banner.gif[/img]
 
 Better Carts makes hauling with Carts more pleasant with quality-of-life features, all configurable in-game
 
 [size=4][b]Features[/b][/size]
+
 [list]
 [*][b]Chain Overflow[/b] - when a full Cart picks up an item, it is passed to the next Cart in the chain with a free slot. Nothing is left behind until every chained Cart is full[/*]
 [*][b]Bucket Priority[/b] - prefer grabbing an empty Bucket when unloading a Cart[/*]
@@ -18,16 +19,20 @@ Better Carts makes hauling with Carts more pleasant with quality-of-life feature
 [/list]
 
 [size=4][b]Configuration[/b][/size]
+
 All settings (master toggle, per-feature toggles etc.) are configured from the [b]Mod Settings[/b] button in the main menu (added by [b]Mod Settings Menu[/b]), or in [b]BepInEx/config/com.beesq.romestead.bettercarts.cfg[/b]
 
 [size=4][b]Requirements[/b][/size]
+
 [list]
 [*][url=https://www.nexusmods.com/romestead/mods/1]BepinEx 6 For Romestead (Mod Loader)[/url] by Ice Box Studio[/*]
 [*][url=https://www.nexusmods.com/romestead/mods/8]Mod Settings Menu (Settings Menu)[/url] by Ice Box Studio[/*]
 [/list]
 
 [size=4][b]Multiplayer[/b][/size]
+
 [b]Server-side[/b] - only the host needs the mod, joining players do not need anything installed
+
 [list]
 [*]Chain Overflow[/*]
 [*]Cart Capacity - the host's values apply to everyone, but each player needs the mod to SEE cargo beyond the vanilla slots[/*]
@@ -38,6 +43,7 @@ All settings (master toggle, per-feature toggles etc.) are configured from the [
 [/list]
 
 [b]Client-side[/b] - applies to each player that has the mod installed
+
 [list]
 [*]Bucket Priority[/*]
 [*]Cart Release Fix[/*]
@@ -45,6 +51,7 @@ All settings (master toggle, per-feature toggles etc.) are configured from the [
 [/list]
 
 [size=4][b]Compatibility[/b][/size]
+
 [list]
 [*][url=https://www.nexusmods.com/romestead/mods/92]Iron Cart[/url] by burdock12 - compatible but not supported by the Cart Capacity feature[/*]
 [*][url=https://www.nexusmods.com/romestead/mods/34]Cart Capacity[/url] by Specsfo/Encordeo - not compatible[/*]
@@ -52,9 +59,11 @@ All settings (master toggle, per-feature toggles etc.) are configured from the [
 [/list]
 
 [size=4][b]Install[/b][/size]
+
 Extract the zip into your Romestead folder (the mod files land in BepInEx/plugins/BetterCarts), then launch the game through Steam
 
 [size=4][b]Notes[/b][/size]
+
 [list]
 [*]The mod stores nothing in your save unless a Cart actually carries more than the game allows on its own - more than 4 items, or more than 5 with the Mercury blessing[/*]
 [*]Eject Overflow is the only part of the mod that moves your cargo: on world load, a Cart over its capacity drops the surplus beside itself[/*]
@@ -65,17 +74,21 @@ Extract the zip into your Romestead folder (the mod files land in BepInEx/plugin
 [/list]
 
 [size=4][b]Known Issues[/b][/size]
+
 [list]
 [*]The game rarely stops responding while saving. Reopening the world loads the last completed save[/*]
 [/list]
 
 [size=4][b]Bug Reports and Feedback[/b][/size]
+
 Please submit through GitHub Issues on the source repo (link below)
 
 [size=4][b]Credits[/b][/size]
+
 Thanks to [url=https://beartwigs.com]Beartwigs[/url] for creating [url=https://store.steampowered.com/app/1805320/Romestead]Romestead[/url]
 
 [size=4][b]AI Disclosure[/b][/size]
+
 [list]
 [*]AI does the writing - the code and all the text that comes with it[/*]
 [*]I write the rules it follows: what gets built, how it works, how it reads[/*]
@@ -83,6 +96,7 @@ Thanks to [url=https://beartwigs.com]Beartwigs[/url] for creating [url=https://s
 [/list]
 
 [size=4][b]Links[/b][/size]
+
 [list]
 [*]Source code (MIT): [url=https://github.com/BeesQ/Romestead-BetterCarts-Mod]GitHub[/url][/*]
 [*]Also on Thunderstore: [url=https://thunderstore.io/c/romestead/p/BeesQ/BetterCarts]thunderstore.io[/url][/*]

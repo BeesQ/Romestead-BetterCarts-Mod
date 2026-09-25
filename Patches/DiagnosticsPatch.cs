@@ -12,7 +12,7 @@ namespace BetterCarts.Patches;
 // Diagnostics only. Prepare returns false when the master switch is off, so these patches are never installed.
 internal static class DiagnosticsPatch {
     private static bool Armed() {
-        return ModConfig.Diagnostics != null && ModConfig.Diagnostics.Value;
+        return ModConfig.DiagnosticsArmed;
     }
 
     private static MethodBase FirstMethod(Type owner, params string[] names) {

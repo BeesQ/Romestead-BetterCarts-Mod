@@ -215,7 +215,7 @@ internal static class ModWatchdog {
         private static readonly Action Body = NotePump;
 
         private static bool Prepare() {
-            if (ModConfig.Diagnostics == null || !ModConfig.Diagnostics.Value) {
+            if (!ModConfig.DiagnosticsArmed) {
                 return false;
             }
             // Memory Watch is read HERE as well as at every write site, because this prefix runs on the server tick

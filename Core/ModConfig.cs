@@ -5,15 +5,15 @@ namespace BetterCarts;
 
 internal static class ModConfig {
     internal static ConfigEntry<bool> Enabled;
-    internal static ConfigEntry<bool> LoadChainOverflow;
-    internal static ConfigEntry<bool> LoadBucketPriority;
-    internal static ConfigEntry<bool> LoadCartReleaseFix;
-    internal static ConfigEntry<bool> LoadCartCapacity;
-    internal static ConfigEntry<bool> LoadCartOverlays;
-    internal static ConfigEntry<bool> LoadCollectRange;
-    internal static ConfigEntry<bool> LoadDepositRange;
-    internal static ConfigEntry<bool> LoadConnectRange;
-    internal static ConfigEntry<bool> LoadStockpileRange;
+    internal static LoadSwitch LoadChainOverflow;
+    internal static LoadSwitch LoadBucketPriority;
+    internal static LoadSwitch LoadCartReleaseFix;
+    internal static LoadSwitch LoadCartCapacity;
+    internal static LoadSwitch LoadCartOverlays;
+    internal static LoadSwitch LoadCollectRange;
+    internal static LoadSwitch LoadDepositRange;
+    internal static LoadSwitch LoadConnectRange;
+    internal static LoadSwitch LoadStockpileRange;
     internal static ConfigEntry<bool> ChainOverflowEnabled;
     internal static ConfigEntry<bool> DepositRangeEnabled;
     internal static ConfigEntry<int> DepositRange;
@@ -35,7 +35,9 @@ internal static class ModConfig {
     internal static ConfigEntry<int> StockpileRange;
     internal static ConfigEntry<bool> StockpileWhilePulled;
     internal static ConfigEntry<bool> StockpileWhileParked;
-    internal static ConfigEntry<bool> Diagnostics;
+    internal static ConfigEntry<bool> TroubleshootingEnabled;
+    internal static ConfigEntry<bool> DiagnosticLogs;
+    internal static bool DiagnosticsArmed;
     internal static ConfigEntry<bool> DiagSave;
     internal static ConfigEntry<bool> DiagMemory;
     internal static ConfigEntry<bool> DiagCensus;
@@ -50,36 +52,42 @@ internal static class ModConfig {
 
     internal static void Init(ConfigFile config) {
         Bound.Clear();
+        // bound first because the Load switches and every Troubleshooting entry read it for their hidden tags
+        // BepInEx writes the .cfg sorted alphabetically by section, so this name is what puts the section at the bottom of the file; Order 10 puts it last in Mod Settings Menu as well
+        TroubleshootingEnabled = Track(config.Bind("Troubleshooting", "Enabled", false,
+            new ConfigDescription("Shows the diagnostic settings below and a Load switch for each feature in General. Load switches apply only while this is on. Requires a restart.", null,
+                SectionTag("Troubleshooting", 10), EntryTag("Troubleshooting Mode (needs restart)", 0))));
+        bool troubleshooting = TroubleshootingEnabled.Value;
         Enabled = Track(config.Bind("General", "Enabled", true,
             new ConfigDescription("Enables all mod features.", null,
         SectionTag("General", 0), EntryTag("All features", 0))));
-        LoadChainOverflow = Track(config.Bind("General", "Load Chain Overflow", false,
-            new ConfigDescription("Loads Chain Overflow when the game starts. When disabled, the feature is not loaded at all. Requires a restart.", null,
-                EntryTag("Load Chain Overflow (needs restart)", 1))));
-        LoadBucketPriority = Track(config.Bind("General", "Load Bucket Priority", false,
-            new ConfigDescription("Loads Bucket Priority when the game starts. When disabled, the feature is not loaded at all. Requires a restart.", null,
-                EntryTag("Load Bucket Priority (needs restart)", 2))));
-        LoadCartReleaseFix = Track(config.Bind("General", "Load Cart Release Fix", false,
-            new ConfigDescription("Loads Cart Release Fix when the game starts. When disabled, the feature is not loaded at all. Requires a restart.", null,
-                EntryTag("Load Cart Release Fix (needs restart)", 3))));
-        LoadCartCapacity = Track(config.Bind("General", "Load Cart Capacity", false,
-            new ConfigDescription("Loads Cart Capacity when the game starts. When disabled, the feature is not loaded at all. Requires a restart.", null,
-                EntryTag("Load Cart Capacity (needs restart)", 4))));
-        LoadCartOverlays = Track(config.Bind("General", "Load Cart Overlays", false,
-            new ConfigDescription("Loads Cart Overlays when the game starts. When disabled, the feature is not loaded at all. Requires a restart.", null,
-                EntryTag("Load Cart Overlays (needs restart)", 5))));
-        LoadCollectRange = Track(config.Bind("General", "Load Collect Range", false,
-            new ConfigDescription("Loads Collect Range when the game starts. When disabled, the feature is not loaded at all. Requires a restart.", null,
-                EntryTag("Load Collect Range (needs restart)", 6))));
-        LoadDepositRange = Track(config.Bind("General", "Load Deposit Range", false,
-            new ConfigDescription("Loads Deposit Range when the game starts. When disabled, the feature is not loaded at all. Requires a restart.", null,
-                EntryTag("Load Deposit Range (needs restart)", 7))));
-        LoadConnectRange = Track(config.Bind("General", "Load Connect Range", false,
-            new ConfigDescription("Loads Connect Range when the game starts. When disabled, the feature is not loaded at all. Requires a restart.", null,
-                EntryTag("Load Connect Range (needs restart)", 8))));
-        LoadStockpileRange = Track(config.Bind("General", "Load Stockpile Range", false,
-            new ConfigDescription("Loads Stockpile Range when the game starts. When disabled, the feature is not loaded at all. Requires a restart.", null,
-                EntryTag("Load Stockpile Range (needs restart)", 9))));
+        LoadChainOverflow = new LoadSwitch(Track(config.Bind("General", "Load Chain Overflow", true,
+            new ConfigDescription("Loads Chain Overflow when the game starts. When disabled, the feature is not loaded at all. Applies only while Troubleshooting Mode is on. Requires a restart.", null,
+                EntryTag("Load Chain Overflow (needs restart)", 1, hidden: !troubleshooting)))), troubleshooting);
+        LoadBucketPriority = new LoadSwitch(Track(config.Bind("General", "Load Bucket Priority", true,
+            new ConfigDescription("Loads Bucket Priority when the game starts. When disabled, the feature is not loaded at all. Applies only while Troubleshooting Mode is on. Requires a restart.", null,
+                EntryTag("Load Bucket Priority (needs restart)", 2, hidden: !troubleshooting)))), troubleshooting);
+        LoadCartReleaseFix = new LoadSwitch(Track(config.Bind("General", "Load Cart Release Fix", true,
+            new ConfigDescription("Loads Cart Release Fix when the game starts. When disabled, the feature is not loaded at all. Applies only while Troubleshooting Mode is on. Requires a restart.", null,
+                EntryTag("Load Cart Release Fix (needs restart)", 3, hidden: !troubleshooting)))), troubleshooting);
+        LoadCartCapacity = new LoadSwitch(Track(config.Bind("General", "Load Cart Capacity", true,
+            new ConfigDescription("Loads Cart Capacity when the game starts. When disabled, the feature is not loaded at all. Applies only while Troubleshooting Mode is on. Requires a restart.", null,
+                EntryTag("Load Cart Capacity (needs restart)", 4, hidden: !troubleshooting)))), troubleshooting);
+        LoadCartOverlays = new LoadSwitch(Track(config.Bind("General", "Load Cart Overlays", true,
+            new ConfigDescription("Loads Cart Overlays when the game starts. When disabled, the feature is not loaded at all. Applies only while Troubleshooting Mode is on. Requires a restart.", null,
+                EntryTag("Load Cart Overlays (needs restart)", 5, hidden: !troubleshooting)))), troubleshooting);
+        LoadCollectRange = new LoadSwitch(Track(config.Bind("General", "Load Collect Range", true,
+            new ConfigDescription("Loads Collect Range when the game starts. When disabled, the feature is not loaded at all. Applies only while Troubleshooting Mode is on. Requires a restart.", null,
+                EntryTag("Load Collect Range (needs restart)", 6, hidden: !troubleshooting)))), troubleshooting);
+        LoadDepositRange = new LoadSwitch(Track(config.Bind("General", "Load Deposit Range", true,
+            new ConfigDescription("Loads Deposit Range when the game starts. When disabled, the feature is not loaded at all. Applies only while Troubleshooting Mode is on. Requires a restart.", null,
+                EntryTag("Load Deposit Range (needs restart)", 7, hidden: !troubleshooting)))), troubleshooting);
+        LoadConnectRange = new LoadSwitch(Track(config.Bind("General", "Load Connect Range", true,
+            new ConfigDescription("Loads Connect Range when the game starts. When disabled, the feature is not loaded at all. Applies only while Troubleshooting Mode is on. Requires a restart.", null,
+                EntryTag("Load Connect Range (needs restart)", 8, hidden: !troubleshooting)))), troubleshooting);
+        LoadStockpileRange = new LoadSwitch(Track(config.Bind("General", "Load Stockpile Range", true,
+            new ConfigDescription("Loads Stockpile Range when the game starts. When disabled, the feature is not loaded at all. Applies only while Troubleshooting Mode is on. Requires a restart.", null,
+                EntryTag("Load Stockpile Range (needs restart)", 9, hidden: !troubleshooting)))), troubleshooting);
         ChainOverflowEnabled = Track(config.Bind("Chain Overflow", "Enabled", true,
             new ConfigDescription("Passes items picked up by a full Cart to the next Cart in the chain with a free slot.", null,
                 SectionTag("Chain Overflow", 1), EntryTag("Pass overflow along the chain", 0))));
@@ -149,36 +157,36 @@ internal static class ModConfig {
             new ConfigDescription("Collects from stockpiles while the Cart is not being pulled.", null,
                 EntryTag("While parked", 3))));
 
-        // BepInEx writes the .cfg sorted alphabetically by section, so this name is what puts the section at the bottom of the file; Order 10 puts it last in Mod Settings Menu as well
-        Diagnostics = Track(config.Bind("Troubleshooting", "Diagnostics", false,
-            new ConfigDescription("Enables diagnostic logging to BepInEx/LogOutput.log. Requires a restart to apply and show diagnostic settings.", null,
-        SectionTag("Troubleshooting", 10), EntryTag("Write diagnostic logs (needs restart)", 0))));
+        DiagnosticLogs = Track(config.Bind("Troubleshooting", "Diagnostic Logs", true,
+            new ConfigDescription("Enables diagnostic logging to BepInEx/LogOutput.log. Requires a restart.", null,
+                EntryTag("Write diagnostic logs (needs restart)", 1, hidden: !troubleshooting))));
+        DiagnosticsArmed = troubleshooting && DiagnosticLogs.Value;
         DiagSave = Track(config.Bind("Troubleshooting", "Save Watch", true,
             new ConfigDescription("Logs save duration, changes during saving and save failures.", null,
-                EntryTag("Watch saving", 1, hidden: !Diagnostics.Value))));
+                EntryTag("Watch saving", 2, hidden: !troubleshooting))));
         // Runs a background thread for the whole session.
         DiagMemory = Track(config.Bind("Troubleshooting", "Memory Watch", false,
             new ConfigDescription("Logs memory usage during saves, game pauses and stalls using a background thread. Requires a restart.", null,
-                EntryTag("Watch memory and stalls (needs restart)", 2, hidden: !Diagnostics.Value))));
+                EntryTag("Watch memory and stalls (needs restart)", 3, hidden: !troubleshooting))));
         DiagCensus = Track(config.Bind("Troubleshooting", "World Census", true,
             new ConfigDescription("Logs entity, Cart and extra cargo counts in each world every 30 seconds.", null,
-                EntryTag("Count the world periodically", 3, hidden: !Diagnostics.Value))));
+                EntryTag("Count the world periodically", 4, hidden: !troubleshooting))));
         DiagCapacity = Track(config.Bind("Troubleshooting", "Cart Capacity", true,
             new ConfigDescription("Logs Cart adoption, extra cargo pinning and release, and updates sent to other players.", null,
-                EntryTag("Trace Cart Capacity", 4, hidden: !Diagnostics.Value))));
+                EntryTag("Trace Cart Capacity", 5, hidden: !troubleshooting))));
         DiagPickup = Track(config.Bind("Troubleshooting", "Cart Pickup", true,
             new ConfigDescription("Logs pickups and deposits through Collect Range, Deposit Range and Stockpile Range.", null,
-                EntryTag("Trace pickup and deposit", 5, hidden: !Diagnostics.Value))));
+                EntryTag("Trace pickup and deposit", 6, hidden: !troubleshooting))));
         DiagChain = Track(config.Bind("Troubleshooting", "Cart Chain", true,
             new ConfigDescription("Logs Cart connections, disconnections and overflow transfers along the chain.", null,
-                EntryTag("Trace the Cart chain", 6, hidden: !Diagnostics.Value))));
+                EntryTag("Trace the Cart chain", 7, hidden: !troubleshooting))));
         DiagStateDump = Track(config.Bind("Troubleshooting", "Cart State Dump", false,
-            new ConfigDescription("Logs every Cart's complete contents every tick. Produces thousands of lines per minute; enable only for targeted troubleshooting.", null,
-                EntryTag("Dump full Cart state every tick", 7, hidden: !Diagnostics.Value))));
+            new ConfigDescription("Logs every Cart's complete contents whenever they change. Can produce thousands of lines per minute; enable only for targeted troubleshooting.", null,
+                EntryTag("Dump full Cart state when it changes", 8, hidden: !troubleshooting))));
         // Diagnostic output still reaches BepInEx/LogOutput.log when this is disabled.
         DiagLogFile = Track(config.Bind("Troubleshooting", "Log File", false,
-            new ConfigDescription("Also writes diagnostics to BetterCarts.log next to the mod. Writes continuously to disk. Requires a restart.", null,
-                EntryTag("Also write a BetterCarts.log file (needs restart)", 8, hidden: !Diagnostics.Value))));
+            new ConfigDescription("Also writes diagnostics to BetterCarts.log next to the mod. Writes continuously to disk.", null,
+                EntryTag("Also write a BetterCarts.log file", 9, hidden: !troubleshooting))));
     }
 
     private static ConfigEntry<T> Track<T>(ConfigEntry<T> entry) {
@@ -196,5 +204,14 @@ internal static class ModConfig {
 
     internal static object EntryTag(string displayName, int order, bool hidden) {
         return new { DisplayName = displayName, Order = order, Hidden = hidden };
+    }
+
+    // read once at startup: outside Troubleshooting Mode every feature loads, whatever the saved value says
+    internal sealed class LoadSwitch {
+        internal LoadSwitch(ConfigEntry<bool> entry, bool troubleshooting) {
+            Value = !troubleshooting || entry.Value;
+        }
+
+        internal bool Value { get; }
     }
 }

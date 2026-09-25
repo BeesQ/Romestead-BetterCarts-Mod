@@ -26,7 +26,7 @@ internal static class ModLog {
     }
 
     internal static bool Enabled {
-        get { return _log != null && ModConfig.Diagnostics != null && ModConfig.Diagnostics.Value; }
+        get { return _log != null && ModConfig.DiagnosticsArmed && ModConfig.TroubleshootingEnabled.Value && ModConfig.DiagnosticLogs.Value; }
     }
 
     private static bool Channel(ConfigEntry<bool> entry) {

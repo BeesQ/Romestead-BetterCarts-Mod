@@ -108,15 +108,19 @@ internal static class CartCapacity {
             return false;
         }
         if (!Records.TryGetValue(cartEntity.BaseGuid, out CartTypeRecord record) || record.Setting == null) {
-            ModLog.AdvancedOnChange("cap:" + cartEntity.BaseGuid, "CAPACITY type=" + cartEntity.BaseGuid
-                + " is not a vanilla Cart type - Cart Capacity does not apply to it");
+            if (ModLog.AdvancedEnabled) {
+                ModLog.AdvancedOnChange("cap:" + cartEntity.BaseGuid, "CAPACITY type=" + cartEntity.BaseGuid
+                    + " is not a vanilla Cart type - Cart Capacity does not apply to it");
+            }
             return false;
         }
         int configured = record.Setting.Value;
         int bonus = Blessed ? BlessingBonus : 0;
         capacity = configured + bonus;
-        ModLog.AdvancedOnChange("cap:" + record.Id, "CAPACITY " + record.Name + " base=" + configured + " bonus=" + bonus
-            + " blessed=" + Blessed + " -> " + capacity);
+        if (ModLog.AdvancedEnabled) {
+            ModLog.AdvancedOnChange("cap:" + record.Id, "CAPACITY " + record.Name + " base=" + configured + " bonus=" + bonus
+                + " blessed=" + Blessed + " -> " + capacity);
+        }
         return true;
     }
 

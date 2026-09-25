@@ -13,6 +13,9 @@ internal static class ChainOverflowPatch {
     [ThreadStatic]
     private static bool _walkingChain;
 
+    [ThreadStatic]
+    private static HashSet<Guid> _visited;
+
     private static bool Prepare() { return ModConfig.LoadChainOverflow.Value; }
 
     private static void Postfix(ServerCart2Controller __instance, EntityWrapper entity, ref bool __result) {
@@ -33,7 +36,9 @@ internal static class ChainOverflowPatch {
     }
 
     private static bool TryPickupIntoChain(ServerCart2Controller source, EntityWrapper entity) {
-        HashSet<Guid> visited = new HashSet<Guid> { source.Entity.Id };
+        HashSet<Guid> visited = _visited ??= new HashSet<Guid>();
+        visited.Clear();
+        visited.Add(source.Entity.Id);
         if (WalkChain(source, entity, visited, followers: true)) {
             return true;
         }

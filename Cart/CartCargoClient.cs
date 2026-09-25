@@ -24,30 +24,38 @@ internal static class CartCargoClient {
     // vanilla emits this from Cart2Controller.UpdateSlot whenever a c1..c5 parameter changes to a new item, and nothing on the server plays it. Extras ride bc_cargo instead of cN, so UpdateSlot never sees them and the sound has to be replicated here or cargo past the vanilla slots lands silently
     private const string PickupSound = "event:/hits/impact/impact_storage";
 
-    private static readonly ConditionalWeakTable<Cart2Controller, List<Guid>> Slots =
-        new ConditionalWeakTable<Cart2Controller, List<Guid>>();
+    private sealed class ClientState {
+        internal readonly List<Guid> Slots = new List<Guid>();
+        internal string LastRaw;
+    }
+
+    private static readonly ConditionalWeakTable<Cart2Controller, ClientState> States =
+        new ConditionalWeakTable<Cart2Controller, ClientState>();
 
     private static readonly List<Guid> ReuseIncoming = new List<Guid>();
     private static readonly HashSet<Guid> ReuseIncomingSeen = new HashSet<Guid>();
-    private static readonly ConditionalWeakTable<Cart2Controller, string[]> LastRaw =
-        new ConditionalWeakTable<Cart2Controller, string[]>();
 
     // Cart2Controller.OnServerSetState re-reads c1..c5 after every parameter sync; bc_cargo rides the same message
     internal static void SyncSlots(Cart2Controller cart) {
-        List<Guid> slots = Slots.GetOrCreateValue(cart);
+        SyncSlots(cart, States.GetOrCreateValue(cart));
+    }
+
+    private static void SyncSlots(Cart2Controller cart, ClientState state) {
+        List<Guid> slots = state.Slots;
         var parameters = cart.Parameters;
         if (parameters == null) {
             return;
         }
         string stored = parameters.GetString(CartCargoSync.CargoKey, string.Empty);
-        string[] previous = LastRaw.GetValue(cart, _ => new string[1]);
-        if (string.Equals(previous[0], stored, StringComparison.Ordinal)) {
+        if (string.Equals(state.LastRaw, stored, StringComparison.Ordinal)) {
             return;
         }
         // the very first sync for a cart is adoption from the save, not a pickup - without this a cart loaded holding extras would fire one sound per item on world load
-        bool firstSync = previous[0] == null;
-        previous[0] = stored;
-        ModLog.Advanced("CLIENT SYNC cart=" + cart.Entity.Id + " bc_cargo=\"" + stored + "\" had=" + slots.Count);
+        bool firstSync = state.LastRaw == null;
+        state.LastRaw = stored;
+        if (ModLog.AdvancedEnabled) {
+            ModLog.Advanced("CLIENT SYNC cart=" + cart.Entity.Id + " bc_cargo=\"" + stored + "\" had=" + slots.Count);
+        }
         CartCargoSync.Unpack(stored, ReuseIncoming, ReuseIncomingSeen);
         foreach (Guid id in slots) {
             if (!ReuseIncoming.Contains(id)) {
@@ -76,8 +84,9 @@ internal static class CartCargoClient {
             return;
         }
 
-        SyncSlots(cart);
-        List<Guid> slots = Slots.GetOrCreateValue(cart);
+        ClientState state = States.GetOrCreateValue(cart);
+        SyncSlots(cart, state);
+        List<Guid> slots = state.Slots;
 
         for (int i = 0; i < slots.Count; i++) {
             if (!GameState.Entities.TryGetValue(slots[i], out EntityWrapper item)
@@ -106,7 +115,7 @@ internal static class CartCargoClient {
     }
 
     internal static void ReleaseAll(Cart2Controller cart) {
-        List<Guid> slots = Slots.GetOrCreateValue(cart);
+        List<Guid> slots = States.GetOrCreateValue(cart).Slots;
         foreach (Guid id in slots) {
             ReleaseOne(cart, id);
         }

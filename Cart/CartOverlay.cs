@@ -60,6 +60,11 @@ internal static class CartOverlay {
     }
 
     private sealed class OverlayState {
+        internal OverlayState(Cart2Controller owner) {
+            Owner = new WeakReference<Cart2Controller>(owner);
+        }
+
+        internal readonly WeakReference<Cart2Controller> Owner;
         internal int Count = -1;
         internal string Text = string.Empty;
         internal string MeasuredText;
@@ -80,6 +85,9 @@ internal static class CartOverlay {
 
     private static readonly ConditionalWeakTable<Cart2Controller, OverlayState> States =
         new ConditionalWeakTable<Cart2Controller, OverlayState>();
+
+    // Draw walks this instead of the weak table, which allocated an enumerator and took a lock every frame. Same insertion order; the weak owner keeps a removed Cart collectable
+    private static readonly List<OverlayState> Ordered = new List<OverlayState>();
 
     internal static bool Showing {
         get {
@@ -111,7 +119,12 @@ internal static class CartOverlay {
             Forget(cart);
             return;
         }
-        OverlayState state = States.GetOrCreateValue(cart);
+        if (!States.TryGetValue(cart, out OverlayState state)) {
+            state = new OverlayState(cart);
+            States.Add(cart, state);
+            PruneCollected();
+            Ordered.Add(state);
+        }
         long now = Environment.TickCount64;
         if (now < state.NextRefreshTick) {
             return;
@@ -125,8 +138,17 @@ internal static class CartOverlay {
     }
 
     internal static void Forget(Cart2Controller cart) {
-        if (cart != null) {
+        if (cart != null && States.TryGetValue(cart, out OverlayState state)) {
             States.Remove(cart);
+            Ordered.Remove(state);
+        }
+    }
+
+    private static void PruneCollected() {
+        for (int i = Ordered.Count - 1; i >= 0; i--) {
+            if (!Ordered[i].Owner.TryGetTarget(out _)) {
+                Ordered.RemoveAt(i);
+            }
         }
     }
 
@@ -143,13 +165,12 @@ internal static class CartOverlay {
         Vector2? scaleArgument = scaleVector;
         Vector2 anchorOffset = new Vector2(0f, -AnchorHeight);
 
-        foreach (KeyValuePair<Cart2Controller, OverlayState> pair in States) {
-            OverlayState state = pair.Value;
+        for (int i = 0; i < Ordered.Count; i++) {
+            OverlayState state = Ordered[i];
             if (state.Count < 0 || !Visible(state.Count)) {
                 continue;
             }
-            Cart2Controller cart = pair.Key;
-            if (cart == null) {
+            if (!state.Owner.TryGetTarget(out Cart2Controller cart) || cart == null) {
                 continue;
             }
             EntityWrapper cartEntity = cart.Entity;

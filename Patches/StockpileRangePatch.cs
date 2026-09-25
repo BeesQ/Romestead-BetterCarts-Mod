@@ -243,6 +243,7 @@ internal static class StockpileRangePatch {
         ReuseList.Clear();
         collisions.GetEntitiesInRectangleArea(takeZone, ReuseList);
         ServerCart2Controller bestCart = null;
+        ServerBucketController bestBucket = null;
         float bestCartDistanceSquared = float.MaxValue;
         foreach (EntityWrapper candidate in ReuseList) {
             if (candidate.Removed || candidate.PositionZ > MaxTakeZ) {
@@ -254,20 +255,18 @@ internal static class StockpileRangePatch {
             if (!IsEligible(cart, whilePulled, whileParked)) {
                 continue;
             }
-            if (FindEmptyBucketInChain(cart) == null) {
+            ServerBucketController bucket = FindEmptyBucketInChain(cart);
+            if (bucket == null) {
                 continue;
             }
             float distanceSquared = Vector2.DistanceSquared(candidate.Position2, vatCenter);
             if (distanceSquared < bestCartDistanceSquared) {
                 bestCartDistanceSquared = distanceSquared;
                 bestCart = cart;
+                bestBucket = bucket;
             }
         }
         if (bestCart == null) {
-            return;
-        }
-        ServerBucketController bestBucket = FindEmptyBucketInChain(bestCart);
-        if (bestBucket == null) {
             return;
         }
         ReuseTake[0] = new ResourceAmount { ResourceId = bucketResourceId, Amount = 1 };

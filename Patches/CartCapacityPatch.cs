@@ -23,8 +23,10 @@ internal static class CartCapacityPatch {
             }
             __state = true;
             __result = false;
-            ModLog.AdvancedOnChange("block:" + __instance.Entity.Id,
-                "BLOCK cart=" + __instance.Entity.Id + " occupied=" + occupied + " >= cap=" + capacity);
+            if (ModLog.AdvancedEnabled) {
+                ModLog.AdvancedOnChange("block:" + __instance.Entity.Id,
+                    "BLOCK cart=" + __instance.Entity.Id + " occupied=" + occupied + " >= cap=" + capacity);
+            }
             return false;
         }
 
@@ -50,8 +52,10 @@ internal static class CartCapacityPatch {
             if (CartCargo.GetOccupied(__instance) >= capacity) {
                 return;
             }
-            ModLog.Advanced("EXTEND cart=" + __instance.Entity.Id + " taking " + entity.Id + " (cap=" + capacity
-                + " occupied=" + CartCargo.GetOccupied(__instance) + ")");
+            if (ModLog.AdvancedEnabled) {
+                ModLog.Advanced("EXTEND cart=" + __instance.Entity.Id + " taking " + entity.Id + " (cap=" + capacity
+                    + " occupied=" + CartCargo.GetOccupied(__instance) + ")");
+            }
             CartCargo.PinExtra(__instance, entity);
             __result = true;
         }

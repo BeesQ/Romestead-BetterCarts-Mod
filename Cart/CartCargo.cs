@@ -32,6 +32,7 @@ internal static class CartCargo {
         internal long NextSweepTick;
         internal bool Adopted;
         internal string Written;
+        internal readonly List<Guid> WrittenIds = new List<Guid>();
         internal long OccupiedStamp = -1;
         internal int Occupied;
         internal bool EjectDone;
@@ -48,6 +49,9 @@ internal static class CartCargo {
     private static readonly List<Guid> ReuseAdopt = new List<Guid>();
     private static readonly HashSet<Guid> ReuseAdoptSeen = new HashSet<Guid>();
     private static readonly HashSet<Guid> ReuseSlotted = new HashSet<Guid>();
+    private static readonly HashSet<Guid> ReuseSweepIds = new HashSet<Guid>();
+    private static readonly HashSet<Guid> ReuseItemIds = new HashSet<Guid>();
+    private static readonly HashSet<Guid> ReuseOrderIds = new HashSet<Guid>();
 
     // Stockpile Range's capacity pre-check. A carrier COUNT is exact for every mod's extra slots, unlike reading Carried1..5, which caps every cart at the vanilla five no matter what Cart Capacity allows
     internal static bool HasFreeSlot(ServerCart2Controller cart) {
@@ -120,8 +124,10 @@ internal static class CartCargo {
         Pin(cartEntity, item);
         if (!state.Extras.Contains(item.Id)) {
             state.Extras.Add(item.Id);
-            ModLog.Advanced("PIN extra " + Short(item.Id) + " on cart " + Short(cartEntity.Id)
-                + " (extras=" + state.Extras.Count + ")");
+            if (ModLog.AdvancedEnabled) {
+                ModLog.Advanced("PIN extra " + Short(item.Id) + " on cart " + Short(cartEntity.Id)
+                    + " (extras=" + state.Extras.Count + ")");
+            }
         }
         state.OccupiedStamp = -1;
         Publish(cartEntity, state);
@@ -170,7 +176,7 @@ internal static class CartCargo {
         }
         state.Adopted = true;
         string stored = parameters.GetString(CartCargoSync.CargoKey, string.Empty);
-        if (!string.IsNullOrEmpty(stored)) {
+        if (!string.IsNullOrEmpty(stored) && ModLog.AdvancedEnabled) {
             ModLog.Advanced("ADOPT cart=" + Short(cart.Entity.Id) + " bc_cargo=\"" + stored + "\"");
         }
         CartCargoSync.Unpack(stored, ReuseAdopt, ReuseAdoptSeen);
@@ -179,6 +185,8 @@ internal static class CartCargo {
             state.Extras.Add(id);
         }
         state.Written = CartCargoSync.Pack(state.Extras);
+        state.WrittenIds.Clear();
+        state.WrittenIds.AddRange(state.Extras);
         state.OccupiedStamp = -1;
     }
 
@@ -206,7 +214,9 @@ internal static class CartCargo {
             }
             // the player grabbed it off the Cart; vanilla's UpdateCarriedItem performs exactly this reset, and without it the item stays collisionless and no Cart can pick it up again
             if (item.CarrierId.HasValue && item.CarrierId != cartEntity.Id) {
-                ModLog.Advanced("UNPIN extra " + Short(item.Id) + " - carrier changed to " + Short(item.CarrierId.Value));
+                if (ModLog.AdvancedEnabled) {
+                    ModLog.Advanced("UNPIN extra " + Short(item.Id) + " - carrier changed to " + Short(item.CarrierId.Value));
+                }
                 item.NoEntityCollision = false;
                 item.NoTerrainCollision = false;
                 state.Extras.RemoveAt(i);
@@ -228,6 +238,10 @@ internal static class CartCargo {
             return;
         }
         CollectCarried(cart, ReuseSweep);
+        ReuseSweepIds.Clear();
+        foreach (EntityWrapper carried in ReuseSweep) {
+            ReuseSweepIds.Add(carried.Id);
+        }
 
         // A spatial query discovers cargo; it must not erase known membership.
         foreach (Guid id in state.Extras) {
@@ -238,7 +252,7 @@ internal static class CartCargo {
                 return;
             }
 
-            if (item.CarrierId == cartEntity.Id && Find(ReuseSweep, id) == null) {
+            if (item.CarrierId == cartEntity.Id && ReuseSweepIds.Add(id)) {
                 ReuseSweep.Add(item);
             }
         }
@@ -269,9 +283,11 @@ internal static class CartCargo {
             }
             EntityWrapper item = Find(ReuseUnslotted, ReuseOrder[i]);
             if (item != null) {
-                ModLog.Advanced("RELEASE unslotted " + Short(item.Id) + " from cart " + Short(cartEntity.Id)
-                    + " (cap=" + (enforced ? capacity.ToString() : "none") + " keep=" + keep
-                    + " slotted=" + slotted + ")");
+                if (ModLog.AdvancedEnabled) {
+                    ModLog.Advanced("RELEASE unslotted " + Short(item.Id) + " from cart " + Short(cartEntity.Id)
+                        + " (cap=" + (enforced ? capacity.ToString() : "none") + " keep=" + keep
+                        + " slotted=" + slotted + ")");
+                }
                 Release(cartEntity, item);
             }
         }
@@ -310,8 +326,10 @@ internal static class CartCargo {
             ReuseDrop.Add(item);
         }
         for (int i = 0; i < ReuseDrop.Count; i++) {
-            ModLog.Advanced("DROP " + Short(ReuseDrop[i].Id) + " from cart " + Short(cartEntity.Id)
-                + " (slotted=" + slotted + " cap=" + capacity + " surplus=" + surplus + ")");
+            if (ModLog.AdvancedEnabled) {
+                ModLog.Advanced("DROP " + Short(ReuseDrop[i].Id) + " from cart " + Short(cartEntity.Id)
+                    + " (slotted=" + slotted + " cap=" + capacity + " surplus=" + surplus + ")");
+            }
             Drop(cartEntity, ReuseDrop[i], i, ReuseDrop.Count);
         }
         ReuseDrop.Clear();
@@ -401,26 +419,52 @@ internal static class CartCargo {
 
     // the client half of the feature learns about extra cargo ONLY from this parameter - server pins are invisible to it, exactly as vanilla c1..c5 are invisible until their key syncs
     private static void Publish(EntityWrapper cartEntity, CartState state) {
+        // the same list always packs to the same text, so an unchanged list skips the encoding; a never-written state still publishes once
+        if (state.Written != null && SameOrder(state.Extras, state.WrittenIds)) {
+            return;
+        }
         string packed = CartCargoSync.Pack(state.Extras);
         if (string.Equals(packed, state.Written, StringComparison.Ordinal)) {
             return;
         }
         state.Written = packed;
-        ModLog.Advanced("PUBLISH cart=" + Short(cartEntity.Id) + " bc_cargo=\"" + packed + "\"");
+        state.WrittenIds.Clear();
+        state.WrittenIds.AddRange(state.Extras);
+        if (ModLog.AdvancedEnabled) {
+            ModLog.Advanced("PUBLISH cart=" + Short(cartEntity.Id) + " bc_cargo=\"" + packed + "\"");
+        }
         ServerEntitySystemManager.UpdateEntityParameter(cartEntity, CartCargoSync.CargoKey, packed,
             SyncStrategy.Everyone());
+    }
+
+    private static bool SameOrder(List<Guid> current, List<Guid> written) {
+        if (current.Count != written.Count) {
+            return false;
+        }
+        for (int i = 0; i < current.Count; i++) {
+            if (current[i] != written[i]) {
+                return false;
+            }
+        }
+        return true;
     }
 
     // keeps items on the seat they already had, so a rebuild every 100 ms does not shuffle the cargo around
     private static void StableOrder(CartState state, List<EntityWrapper> items) {
         ReuseOrder.Clear();
+        ReuseOrderIds.Clear();
+        ReuseItemIds.Clear();
+        foreach (EntityWrapper item in items) {
+            ReuseItemIds.Add(item.Id);
+        }
         foreach (Guid id in state.Extras) {
-            if (Find(items, id) != null) {
+            if (ReuseItemIds.Contains(id)) {
                 ReuseOrder.Add(id);
+                ReuseOrderIds.Add(id);
             }
         }
         foreach (EntityWrapper item in items) {
-            if (!ReuseOrder.Contains(item.Id)) {
+            if (ReuseOrderIds.Add(item.Id)) {
                 ReuseOrder.Add(item.Id);
             }
         }
@@ -468,13 +512,14 @@ internal static class CartCargo {
         if (dictionary == null || dictionary.Count == 0) {
             return false;
         }
-        string id = itemId.ToString();
+        Span<char> id = stackalloc char[36];
+        itemId.TryFormat(id, out _);
         foreach (var pair in dictionary) {
             // our own key holds a packed LIST; with exactly one extra it would equal that Guid and misread as a vanilla slot
             if (string.Equals(pair.Key, CartCargoSync.CargoKey, StringComparison.Ordinal)) {
                 continue;
             }
-            if (string.Equals(pair.Value, id, StringComparison.OrdinalIgnoreCase)) {
+            if (MemoryExtensions.Equals(pair.Value.AsSpan(), id, StringComparison.OrdinalIgnoreCase)) {
                 return true;
             }
         }

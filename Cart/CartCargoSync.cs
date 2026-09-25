@@ -1,6 +1,5 @@
 using System;
 using System.Collections.Generic;
-using System.Text;
 
 namespace BetterCarts;
 
@@ -10,19 +9,23 @@ internal static class CartCargoSync {
     internal const int MaxExtras = 128;
 
     private const char Separator = ',';
+    private const int GuidLength = 36;
 
+    // one exact-size allocation; TryFormat writes the same lowercase 36-character form as ToString()
     internal static string Pack(List<Guid> extras) {
         if (extras == null || extras.Count == 0) {
             return string.Empty;
         }
-        StringBuilder builder = new StringBuilder();
-        foreach (Guid id in extras) {
-            if (builder.Length > 0) {
-                builder.Append(Separator);
+        return string.Create(extras.Count * (GuidLength + 1) - 1, extras, static (chars, ids) => {
+            int position = 0;
+            for (int i = 0; i < ids.Count; i++) {
+                if (i > 0) {
+                    chars[position++] = Separator;
+                }
+                ids[i].TryFormat(chars.Slice(position), out int written);
+                position += written;
             }
-            builder.Append(id.ToString());
-        }
-        return builder.ToString();
+        });
     }
 
     // the caller owns seen: on a host the server and client halves run on different threads, so one shared set here would race

@@ -29,6 +29,9 @@ internal static class ConnectRangePatch {
     private static readonly ConditionalWeakTable<ServerCart2Controller, SpeedHolder> Speeds =
         new ConditionalWeakTable<ServerCart2Controller, SpeedHolder>();
 
+    [ThreadStatic]
+    private static HashSet<Guid> _visited;
+
     private static bool Prepare() { return ModConfig.LoadConnectRange.Value; }
 
     private static void Postfix(ServerCart2Controller __instance) {
@@ -183,7 +186,11 @@ internal static class ConnectRangePatch {
     }
 
     private static int GetPulledCartChainLength(ServerCart2Controller cart, EntitySystem system) {
-        HashSet<Guid> visited = new HashSet<Guid>();
+        if (!cart.FollowingId.HasValue) {
+            return 0;
+        }
+        HashSet<Guid> visited = _visited ??= new HashSet<Guid>();
+        visited.Clear();
         ServerCart2Controller current = cart;
         int cartCount = 0;
 

@@ -105,6 +105,10 @@ No game or loader assemblies are redistributed - they are referenced from your l
 - Deposit Range takes only matching resources from Cart cargo
 - Stockpile Range takes only from output stockpiles, a building's input storage is never drained
 
+## Known Issues
+
+- The game rarely stops responding while saving. Reopening the world loads the last completed save
+
 ## Bug Reports and Feedback
 
 Please submit through GitHub Issues on this repo
@@ -115,7 +119,7 @@ Thanks to [Beartwigs](https://beartwigs.com) for creating [Romestead](https://st
 
 ## AI Disclosure
 
-- Claude AI does the writing - the code and all the text that comes with it
+- AI does the writing - the code and all the text that comes with it
 - I write the rules it follows: what gets built, how it works, how it reads
 - I test every build
 

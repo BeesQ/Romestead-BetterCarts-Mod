@@ -64,6 +64,11 @@ Extract the zip into your Romestead folder (the mod files land in BepInEx/plugin
 [*]Stockpile Range takes only from output stockpiles, a building's input storage is never drained[/*]
 [/list]
 
+[size=4][b]Known Issues[/b][/size]
+[list]
+[*]The game rarely stops responding while saving. Reopening the world loads the last completed save[/*]
+[/list]
+
 [size=4][b]Bug Reports and Feedback[/b][/size]
 Please submit through GitHub Issues on the source repo (link below)
 
@@ -72,7 +77,7 @@ Thanks to [url=https://beartwigs.com]Beartwigs[/url] for creating [url=https://s
 
 [size=4][b]AI Disclosure[/b][/size]
 [list]
-[*]Claude AI does the writing - the code and all the text that comes with it[/*]
+[*]AI does the writing - the code and all the text that comes with it[/*]
 [*]I write the rules it follows: what gets built, how it works, how it reads[/*]
 [*]I test every build[/*]
 [/list]

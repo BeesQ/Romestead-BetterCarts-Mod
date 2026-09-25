@@ -436,7 +436,7 @@ FodyWeavers.xsd
 Thumbs.db
 desktop.ini
 
-# Visual Studio keeps adding it automatically, I am using Claude AI
+# Visual Studio keeps adding it automatically
 **/copilot-instructions.md
 
 # Packaging

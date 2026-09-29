@@ -8,7 +8,7 @@ Better Carts makes hauling with Carts more pleasant with quality-of-life feature
 
 [list]
 [*][b]Chain Overflow[/b] - when a full Cart picks up an item, it is passed to the next Cart in the chain with a free slot. Nothing is left behind until every chained Cart is full[/*]
-[*][b]Bucket Priority[/b] - prefer grabbing an empty Bucket when unloading a Cart[/*]
+[*][b]Grab Priority[/b] - when unloading a Cart by hand, a Massive Pot is grabbed first, then an empty Bucket[/*]
 [*][b]Cart Release Fix[/b] - releasing a pulled Cart never grabs a different Cart on the same press[/*]
 [*][b]Cart Capacity[/b] - set how many items the vanilla Carts can carry (0-64, default 4). The Mercury cart-capacity blessing adds a configurable bonus on top (0-64, default 1), and Eject Overflow drops anything above the limit beside the Cart when a world loads. Modded Cart types are not covered[/*]
 [*][b]Cart Overlays[/b] - the item count is shown above a Cart carrying more than 5 items, and a Cart that comes loose from the chain by itself says so. Counts for ordinary capacity and for empty Carts can be turned on too[/*]
@@ -22,6 +22,8 @@ Better Carts makes hauling with Carts more pleasant with quality-of-life feature
 
 All settings (master toggle, per-feature toggles etc.) are configured from the [b]Mod Settings[/b] button in the main menu (added by [b]Mod Settings Menu[/b]), or in [b]BepInEx/config/com.beesq.romestead.bettercarts.cfg[/b]
 
+Every feature loads by default. [b]Troubleshooting Mode[/b] (in the Troubleshooting section, off by default) is only for bug reports: after turning it on and restarting the game, it shows diagnostic log options and a Load switch for each feature, so features can be tested one at a time
+
 [size=4][b]Requirements[/b][/size]
 
 [list]
@@ -31,11 +33,13 @@ All settings (master toggle, per-feature toggles etc.) are configured from the [
 
 [size=4][b]Multiplayer[/b][/size]
 
-[b]Server-side[/b] - only the host needs the mod, joining players do not need anything installed
+The host's settings decide how the server-side features work for everyone. Every player should install the mod: without it, a joining player still gets the server-side features, but sees cargo beyond the vanilla slots lying on the ground and has none of the client-side features
+
+[b]Server-side[/b] - run by the host, with the host's settings
 
 [list]
 [*]Chain Overflow[/*]
-[*]Cart Capacity - the host's values apply to everyone, but each player needs the mod to SEE cargo beyond the vanilla slots[/*]
+[*]Cart Capacity - the host's values apply to everyone[/*]
 [*]Collect Range[/*]
 [*]Deposit Range[/*]
 [*]Connect Range[/*]
@@ -45,10 +49,12 @@ All settings (master toggle, per-feature toggles etc.) are configured from the [
 [b]Client-side[/b] - applies to each player that has the mod installed
 
 [list]
-[*]Bucket Priority[/*]
+[*]Grab Priority[/*]
 [*]Cart Release Fix[/*]
 [*]Cart Overlays - the cargo count appears for every player with the mod, and the disconnect message is shown to whoever was pulling the Cart[/*]
 [/list]
+
+Troubleshooting Mode's Load switches only affect the game they are set in - a player whose game does not load Cart Capacity also sees extra cargo on the ground
 
 [size=4][b]Compatibility[/b][/size]
 
@@ -60,15 +66,19 @@ All settings (master toggle, per-feature toggles etc.) are configured from the [
 
 [size=4][b]Install[/b][/size]
 
-Extract the zip into your Romestead folder (the mod files land in BepInEx/plugins/BetterCarts), then launch the game through Steam
+[list=1]
+[*]Install the requirements listed above.[/*]
+[*]Extract the zip into your Romestead folder. The mod files land in BepInEx/plugins/BetterCarts.[/*]
+[*]Launch the game through Steam.[/*]
+[/list]
 
 [size=4][b]Notes[/b][/size]
 
 [list]
-[*]The mod stores nothing in your save unless a Cart actually carries more than the game allows on its own - more than 4 items, or more than 5 with the Mercury blessing[/*]
-[*]Eject Overflow is the only part of the mod that moves your cargo: on world load, a Cart over its capacity drops the surplus beside itself[/*]
+[*]The mod adds data to your save only for Carts that have carried more than the game allows on its own - more than 4 items, or more than 5 with the Mercury blessing[/*]
+[*]With Eject Overflow on, a Cart over its capacity drops the surplus beside itself once per world load, the first time it is near a player[/*]
 [*]High capacity values can cause stutter and stack cargo into a tall tower above the Cart[/*]
-[*]Before removing the mod, change Carts Capacity and Mercury's blessing values back to vanilla, leave Eject Overflow on, and load each affected world once so extra cargo is released[/*]
+[*]Before removing the mod, set every Cart type's capacity back to 4 and Blessing Bonus back to 1, keep Eject Overflow on, then load each world and visit every Cart carrying extra cargo so it drops the surplus. Save, close the game, then remove the mod. Keep a backup of the save until it loads fine without the mod[/*]
 [*]Deposit Range takes only matching resources from Cart cargo[/*]
 [*]Stockpile Range takes only from output stockpiles, a building's input storage is never drained[/*]
 [/list]

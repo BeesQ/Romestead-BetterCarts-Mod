@@ -100,7 +100,8 @@ internal static class CartCargo {
                 continue;
             }
             EntityWrapper item = cartEntity.System.GetEntityById(id);
-            if (item != null && !item.Removed && item.Carriable) {
+            // a slot still names an item a player just took until vanilla clears it
+            if (item != null && !item.Removed && item.Carriable && item.CarrierId == cartEntity.Id) {
                 ReuseSlotted.Add(id);
             }
         }
@@ -121,6 +122,7 @@ internal static class CartCargo {
         }
         CartState state = States.GetOrCreateValue(cart);
         Adopt(cart, state);
+        ClearThrowState(item);
         Pin(cartEntity, item);
         if (!state.Extras.Contains(item.Id)) {
             state.Extras.Add(item.Id);
@@ -223,6 +225,10 @@ internal static class CartCargo {
                 changed = true;
                 continue;
             }
+            // extras adopted from a save or the sweep skip PinExtra's cleanup
+            if (item.IsThrown || item.ThrowerId.HasValue) {
+                ClearThrowState(item);
+            }
             Pin(cartEntity, item);
             Stack(cartEntity, item);
         }
@@ -269,13 +275,16 @@ internal static class CartCargo {
 
         bool enforced = CartCapacity.TryGetEnforcedCapacity(cartEntity, out int capacity);
         int slotted = ReuseSweep.Count - ReuseUnslotted.Count;
+        bool ejecting = !state.EjectDone && enforced && CartCapacity.Ejecting;
+        state.EjectDone = true;
         int keep = ReuseUnslotted.Count;
-        if (enforced && CartCapacity.Ejecting) {
+        if (ejecting) {
             keep = Math.Max(0, Math.Min(ReuseUnslotted.Count, capacity - slotted));
         }
 
         StableOrder(state, ReuseUnslotted);
         state.Extras.Clear();
+        ReuseDrop.Clear();
         for (int i = 0; i < ReuseOrder.Count; i++) {
             if (i < keep) {
                 state.Extras.Add(ReuseOrder[i]);
@@ -283,34 +292,21 @@ internal static class CartCargo {
             }
             EntityWrapper item = Find(ReuseUnslotted, ReuseOrder[i]);
             if (item != null) {
-                if (ModLog.AdvancedEnabled) {
-                    ModLog.Advanced("RELEASE unslotted " + Short(item.Id) + " from cart " + Short(cartEntity.Id)
-                        + " (cap=" + (enforced ? capacity.ToString() : "none") + " keep=" + keep
-                        + " slotted=" + slotted + ")");
-                }
-                Release(cartEntity, item);
+                ReuseDrop.Add(item);
             }
         }
-
-        // dropped items land near the Cart, so re-evaluating this every sweep drops them again
-        bool firstSweep = !state.EjectDone;
-        state.EjectDone = true;
-        if (firstSweep && enforced && CartCapacity.Ejecting) {
-            EjectSurplus(cart, state, cartEntity, capacity, slotted);
+        if (ejecting) {
+            EjectSurplus(cart, cartEntity, capacity, slotted);
         }
 
         state.OccupiedStamp = -1;
         Publish(cartEntity, state);
     }
 
-    private static void EjectSurplus(ServerCart2Controller cart, CartState state, EntityWrapper cartEntity,
-        int capacity, int slotted) {
+    private static void EjectSurplus(ServerCart2Controller cart, EntityWrapper cartEntity, int capacity, int slotted) {
+        int extras = ReuseDrop.Count;
         int surplus = slotted - capacity;
-        if (surplus <= 0) {
-            return;
-        }
-        ReuseDrop.Clear();
-        for (int i = SlotKeys.Length - 1; i >= 0 && ReuseDrop.Count < surplus; i--) {
+        for (int i = SlotKeys.Length - 1; i >= 0 && ReuseDrop.Count - extras < surplus; i--) {
             ref Guid? slot = ref SlotRef(cart, i);
             if (!slot.HasValue) {
                 continue;
@@ -328,12 +324,11 @@ internal static class CartCargo {
         for (int i = 0; i < ReuseDrop.Count; i++) {
             if (ModLog.AdvancedEnabled) {
                 ModLog.Advanced("DROP " + Short(ReuseDrop[i].Id) + " from cart " + Short(cartEntity.Id)
-                    + " (slotted=" + slotted + " cap=" + capacity + " surplus=" + surplus + ")");
+                    + " (slotted=" + slotted + " extras=" + extras + " cap=" + capacity + " dropped=" + ReuseDrop.Count + ")");
             }
             Drop(cartEntity, ReuseDrop[i], i, ReuseDrop.Count);
         }
         ReuseDrop.Clear();
-        state.OccupiedStamp = -1;
     }
 
     private static ref Guid? SlotRef(ServerCart2Controller cart, int index) {
@@ -527,7 +522,6 @@ internal static class CartCargo {
     }
 
     private static void Pin(EntityWrapper cartEntity, EntityWrapper item) {
-        ClearThrowState(item);
         item.NoEntityCollision = true;
         item.NoTerrainCollision = true;
         item.CarrierId = cartEntity.Id;

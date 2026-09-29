@@ -13,18 +13,26 @@ using Shared.Helpers;
 namespace BetterCarts.Patches;
 
 [HarmonyPatch(typeof(GrabActionHelper), nameof(GrabActionHelper.TryPlayerGrabActionProximity))]
-internal static class BucketPriorityPatch {
+internal static class GrabPriorityPatch {
     private const float HeightTolerance = 16f;
     private const float CargoScanRadius = 32f;
 
     // vanilla only looks HeightTolerance above the player, which is exactly what hides a stacked cart from its own grab; the carrier test in CollectCargo is what really scopes this scan, so the band just has to clear the tallest tower a capacity of 128 can build
     private const float CargoCeiling = 1024f;
 
+    private static readonly Guid MassivePotDoodad = new Guid("0e8b6511-0acc-4ea3-bae2-52b973ddba60");
+
+    private enum Tier {
+        Any,
+        MassivePot,
+        EmptyBucket
+    }
+
     private static readonly List<EntityWrapper> Cargo = new List<EntityWrapper>();
     private static readonly List<Guid> Extras = new List<Guid>();
     private static readonly HashSet<Guid> ExtrasSeen = new HashSet<Guid>();
 
-    private static bool Prepare() { return ModConfig.LoadBucketPriority.Value || ModConfig.LoadCartCapacity.Value; }
+    private static bool Prepare() { return ModConfig.LoadGrabPriority.Value || ModConfig.LoadCartCapacity.Value; }
 
     private static void Postfix(EntityWrapper grabbingEntity, float radius, ref EntityWrapper __result) {
         if (!ModConfig.Enabled.Value) {
@@ -33,7 +41,7 @@ internal static class BucketPriorityPatch {
         if (grabbingEntity == null || grabbingEntity.Removed) {
             return;
         }
-        if (__result != null && (!ModConfig.LoadBucketPriority.Value || !ModConfig.BucketPriorityEnabled.Value)) {
+        if (__result != null && (!ModConfig.LoadGrabPriority.Value || !ModConfig.GrabPriorityEnabled.Value)) {
             return;
         }
         if (__result == null && !ModConfig.LoadCartCapacity.Value) {
@@ -52,16 +60,16 @@ internal static class BucketPriorityPatch {
             return;
         }
 
-        if (ModConfig.LoadBucketPriority.Value && ModConfig.BucketPriorityEnabled.Value) {
-            EntityWrapper bucket = Lowest(grabbingEntity, bucketsOnly: true);
-            if (bucket != null) {
-                __result = bucket;
+        if (ModConfig.LoadGrabPriority.Value && ModConfig.GrabPriorityEnabled.Value) {
+            EntityWrapper preferred = Lowest(grabbingEntity, Tier.MassivePot) ?? Lowest(grabbingEntity, Tier.EmptyBucket);
+            if (preferred != null) {
+                __result = preferred;
                 return;
             }
         }
 
         if (__result == null) {
-            __result = Lowest(grabbingEntity, bucketsOnly: false);
+            __result = Lowest(grabbingEntity, Tier.Any);
         }
     }
 
@@ -117,13 +125,13 @@ internal static class BucketPriorityPatch {
     }
 
     // the ring offset is rotated by the cart's mesh matrix before it becomes a world position, so items on one layer do not share an exact world Z and height cannot order the stack; bc_cargo index maps straight to seat and layer, and anything absent from it sits in a vanilla or third-party slot below the stack
-    private static EntityWrapper Lowest(EntityWrapper grabbingEntity, bool bucketsOnly) {
+    private static EntityWrapper Lowest(EntityWrapper grabbingEntity, Tier tier) {
         EntityWrapper best = null;
         int bestRank = 0;
         float bestDistance = 0f;
 
         foreach (EntityWrapper item in Cargo) {
-            if (bucketsOnly && !IsEmptyBucket(item)) {
+            if (!Matches(item, tier)) {
                 continue;
             }
             if (!grabbingEntity.CanAttach(item, allowThrown: false, playerAttach: true)) {
@@ -152,6 +160,14 @@ internal static class BucketPriorityPatch {
         }
 
         return best;
+    }
+
+    private static bool Matches(EntityWrapper item, Tier tier) {
+        switch (tier) {
+            case Tier.MassivePot: return item.BaseGuid == MassivePotDoodad;
+            case Tier.EmptyBucket: return IsEmptyBucket(item);
+            default: return true;
+        }
     }
 
     private static bool IsEmptyBucket(EntityWrapper item) {

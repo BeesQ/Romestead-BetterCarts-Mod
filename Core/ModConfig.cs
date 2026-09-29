@@ -6,7 +6,7 @@ namespace BetterCarts;
 internal static class ModConfig {
     internal static ConfigEntry<bool> Enabled;
     internal static LoadSwitch LoadChainOverflow;
-    internal static LoadSwitch LoadBucketPriority;
+    internal static LoadSwitch LoadGrabPriority;
     internal static LoadSwitch LoadCartReleaseFix;
     internal static LoadSwitch LoadCartCapacity;
     internal static LoadSwitch LoadCartOverlays;
@@ -21,7 +21,7 @@ internal static class ModConfig {
     internal static ConfigEntry<int> CollectRange;
     internal static ConfigEntry<bool> ConnectRangeEnabled;
     internal static ConfigEntry<int> ConnectRange;
-    internal static ConfigEntry<bool> BucketPriorityEnabled;
+    internal static ConfigEntry<bool> GrabPriorityEnabled;
     internal static ConfigEntry<bool> CartReleaseFixEnabled;
     internal static ConfigEntry<bool> CartCapacityEnabled;
     internal static ConfigEntry<int> CartCapacityBlessingBonus;
@@ -64,9 +64,9 @@ internal static class ModConfig {
         LoadChainOverflow = new LoadSwitch(Track(config.Bind("General", "Load Chain Overflow", true,
             new ConfigDescription("Loads Chain Overflow when the game starts. When disabled, the feature is not loaded at all. Applies only while Troubleshooting Mode is on. Requires a restart.", null,
                 EntryTag("Load Chain Overflow (needs restart)", 1, hidden: !troubleshooting)))), troubleshooting);
-        LoadBucketPriority = new LoadSwitch(Track(config.Bind("General", "Load Bucket Priority", true,
-            new ConfigDescription("Loads Bucket Priority when the game starts. When disabled, the feature is not loaded at all. Applies only while Troubleshooting Mode is on. Requires a restart.", null,
-                EntryTag("Load Bucket Priority (needs restart)", 2, hidden: !troubleshooting)))), troubleshooting);
+        LoadGrabPriority = new LoadSwitch(Track(config.Bind("General", "Load Grab Priority", true,
+            new ConfigDescription("Loads Grab Priority when the game starts. When disabled, the feature is not loaded at all. Applies only while Troubleshooting Mode is on. Requires a restart.", null,
+                EntryTag("Load Grab Priority (needs restart)", 2, hidden: !troubleshooting)))), troubleshooting);
         LoadCartReleaseFix = new LoadSwitch(Track(config.Bind("General", "Load Cart Release Fix", true,
             new ConfigDescription("Loads Cart Release Fix when the game starts. When disabled, the feature is not loaded at all. Applies only while Troubleshooting Mode is on. Requires a restart.", null,
                 EntryTag("Load Cart Release Fix (needs restart)", 3, hidden: !troubleshooting)))), troubleshooting);
@@ -112,17 +112,17 @@ internal static class ModConfig {
             new ConfigDescription("Connection range in tiles per side. 0 = vanilla (touch only).",
                 new AcceptableValueRange<int>(0, 10),
                 EntryTag("Range", 1))));
-        BucketPriorityEnabled = Track(config.Bind("Bucket Priority", "Enabled", true,
-            new ConfigDescription("Prioritizes empty Buckets when taking items from a Cart.", null,
-                SectionTag("Bucket Priority", 2), EntryTag("Prefer empty Buckets", 0))));
+        GrabPriorityEnabled = Track(config.Bind("Grab Priority", "Enabled", true,
+            new ConfigDescription("Prioritizes Massive Pots, then empty Buckets, when taking items from a Cart.", null,
+                SectionTag("Grab Priority", 2), EntryTag("Take Massive Pots and empty Buckets first", 0))));
         CartReleaseFixEnabled = Track(config.Bind("Cart Release Fix", "Enabled", true,
             new ConfigDescription("Prevents grabbing another Cart with the same interact press used to release a Cart.", null,
                 SectionTag("Cart Release Fix", 3), EntryTag("Release without re-grabbing", 0))));
         CartCapacityEnabled = Track(config.Bind("Cart Capacity", "Enabled", true,
-            new ConfigDescription("Sets base capacity for vanilla Carts only. The Mercury blessing adds the configured bonus. High capacities may cause stutter and tall cargo stacks. Lowering capacity immediately blocks further pickup while full; excess cargo is ejected on world load if Eject Overflow is enabled. In multiplayer, host settings apply; all players need the mod to see cargo beyond the normal 4 items. Extra capacity affects saved Cart data. Before uninstalling, restore vanilla capacities and blessing bonus, enable Eject Overflow, and load each affected world once.", null,
+            new ConfigDescription("Sets base capacity for vanilla Carts only. The Mercury blessing adds the configured bonus. High capacities may cause stutter and tall cargo stacks. Lowering capacity immediately blocks further pickup while full; excess cargo is ejected on world load if Eject Overflow is enabled. In multiplayer, host settings apply; all players need the mod to see cargo beyond the normal 4 items. Extra capacity affects saved Cart data. Before uninstalling, restore vanilla capacities and blessing bonus, keep Eject Overflow on, visit every Cart carrying extra cargo so it drops the excess, then save.", null,
                 SectionTag("Cart Capacity", 4), EntryTag("Set capacity per Cart type", 0))));
         CartCapacityEjectOverflow = Track(config.Bind("Cart Capacity", "Eject Overflow", true,
-            new ConfigDescription("Drops excess cargo beside Carts when a world loads. If disabled, excess cargo remains until manually unloaded.", null,
+            new ConfigDescription("Drops a Cart's excess cargo beside it the first time the Cart is near a player after a world loads. If disabled, excess cargo remains until manually unloaded.", null,
                 EntryTag("Eject Overflow", 1, hidden: !CartCapacityEnabled.Value))));
         CartCapacityBlessingBonus = Track(config.Bind("Cart Capacity", "Blessing Bonus", 1,
             new ConfigDescription("Extra capacity granted by the Mercury blessing.", new AcceptableValueRange<int>(0, 64),

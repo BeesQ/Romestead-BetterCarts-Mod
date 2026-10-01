@@ -1,3 +1,11 @@
+## 1.5.0
+
+- Updated to Romestead 0.26.2
+- Bucket Priority is now Grab Priority and takes Massive Pots first, then empty Buckets. Its setting resets to ON, so make sure to check it
+- Eject Overflow now drops extra cargo once per world load, in a small circle beside the Cart
+- Small cargo fixes and a safer Collect Range scan
+- Clearer mod page: removal steps, save and multiplayer notes, Troubleshooting Mode
+
 ## 1.4.2
 
 - Added Troubleshooting Mode (off by default): after a restart it shows diagnostic logging for bug reports and a Load switch for each feature. Memory monitoring and the separate log file stay OFF unless turned on

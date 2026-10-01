@@ -67,7 +67,7 @@ Troubleshooting Mode's Load switches only affect the game they are set in - a pl
 [size=4][b]Install[/b][/size]
 
 [list=1]
-[*]Install the requirements listed above.[/*]
+[*]Install the mods listed under Requirements.[/*]
 [*]Extract the zip into your Romestead folder. The mod files land in BepInEx/plugins/BetterCarts.[/*]
 [*]Launch the game through Steam.[/*]
 [/list]

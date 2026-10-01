@@ -41,7 +41,7 @@ Every feature loads by default. **Troubleshooting Mode** (in the Troubleshooting
 | Deposit Range | Enabled / Range | true / 2 | Ranged deposit into Material Storages (0-10 tiles, 0 = vanilla) |
 | Connect Range | Enabled / Range | true / 2 | Ranged Cart pulling (0-10 tiles, 0 = vanilla) |
 | Stockpile Range | Enabled / Range / While Pulled / While Parked | true / 2 / true / false | Take from output stockpiles into Carts (0-10 tiles, 0 = vanilla) |
-| Troubleshooting | Enabled | false | Troubleshooting Mode for bug reports. After a restart it shows the rows below |
+| Troubleshooting | Enabled | false | Troubleshooting Mode for bug reports. After a restart it shows the diagnostic options and the Load switches |
 | Troubleshooting | Diagnostic Logs / Save Watch / Memory Watch / World Census / Cart Capacity / Cart Pickup / Cart Chain / Cart State Dump / Log File | true / true / false / true / true / true / true / false / false | Diagnostic logging, shown only in Troubleshooting Mode |
 | General | `Load <feature name>`, one per feature | true | Shown only in Troubleshooting Mode, where turning one off stops that feature from loading after a restart |
 
@@ -81,7 +81,7 @@ Troubleshooting Mode's Load switches only affect the game they are set in - a pl
 
 ## Install
 
-Recommended: grab it from a mod site, which also lists the Requirements above for you
+Recommended: grab it from a mod site, which also lists the mods under Requirements for you
 
 - **Nexus Mods**: https://www.nexusmods.com/romestead/mods/91
 - **Thunderstore**: https://thunderstore.io/c/romestead/p/BeesQ/BetterCarts (supports Install with Mod Manager)

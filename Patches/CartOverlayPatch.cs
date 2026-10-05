@@ -1,3 +1,4 @@
+using System;
 using Candide.Entities.Controllers.Other;
 using Candide.LegacyUI;
 using HarmonyLib;
@@ -16,7 +17,13 @@ internal static class CartOverlayPatch {
         // Low runs this after the client cargo pin on the same tick, so a recount never sees extras whose CarrierId is not set yet
         [HarmonyPriority(Priority.Low)]
         private static void Postfix(Cart2Controller __instance) {
-            CartOverlay.Track(__instance);
+            try {
+                CartOverlay.Track(__instance);
+            }
+            catch (Exception ex) {
+                ModLog.Fault("CartOverlayPatch.Track.Postfix", ex);
+                throw;
+            }
         }
     }
 
@@ -26,7 +33,13 @@ internal static class CartOverlayPatch {
         private static bool Prepare() { return ModConfig.LoadCartOverlays.Value; }
 
         private static void Postfix(Cart2Controller __instance) {
-            CartOverlay.MarkDirty(__instance);
+            try {
+                CartOverlay.MarkDirty(__instance);
+            }
+            catch (Exception ex) {
+                ModLog.Fault("CartOverlayPatch.Refresh.Postfix", ex);
+                throw;
+            }
         }
     }
 
@@ -35,7 +48,13 @@ internal static class CartOverlayPatch {
         private static bool Prepare() { return ModConfig.LoadCartOverlays.Value; }
 
         private static void Postfix(Cart2Controller __instance) {
-            CartOverlay.Forget(__instance);
+            try {
+                CartOverlay.Forget(__instance);
+            }
+            catch (Exception ex) {
+                ModLog.Fault("CartOverlayPatch.Forget.Postfix", ex);
+                throw;
+            }
         }
     }
 
@@ -45,7 +64,13 @@ internal static class CartOverlayPatch {
         private static bool Prepare() { return ModConfig.LoadCartOverlays.Value; }
 
         private static void Postfix(SpriteBatch batch, Matrix cameraMatrix) {
-            CartOverlay.Draw(batch, cameraMatrix);
+            try {
+                CartOverlay.Draw(batch, cameraMatrix);
+            }
+            catch (Exception ex) {
+                ModLog.Fault("CartOverlayPatch.Draw.Postfix", ex);
+                throw;
+            }
         }
     }
 }

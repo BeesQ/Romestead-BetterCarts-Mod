@@ -35,61 +35,67 @@ internal static class ConnectRangePatch {
     private static bool Prepare() { return ModConfig.LoadConnectRange.Value; }
 
     private static void Postfix(ServerCart2Controller __instance) {
-        if (__instance == null) {
-            return;
-        }
+        try {
+            if (__instance == null) {
+                return;
+            }
 
-        SpeedHolder holder = Speeds.GetOrCreateValue(__instance);
-        EntityWrapper cart = __instance.Entity;
+            SpeedHolder holder = Speeds.GetOrCreateValue(__instance);
+            EntityWrapper cart = __instance.Entity;
 
-        bool active = ModConfig.Enabled.Value
-            && ModConfig.ConnectRangeEnabled.Value
-            && ModConfig.ConnectRange.Value > 0
-            && cart != null
-            && !cart.Removed
-            && !__instance.FollowingId.HasValue;
+            bool active = ModConfig.Enabled.Value
+                && ModConfig.ConnectRangeEnabled.Value
+                && ModConfig.ConnectRange.Value > 0
+                && cart != null
+                && !cart.Removed
+                && !__instance.FollowingId.HasValue;
 
-        if (!active) {
-            if (holder.MoveSpeed > 0f || holder.TurnSpeed > 0f) {
-                holder.MoveSpeed = 0f;
-                holder.TurnSpeed = 0f;
+            if (!active) {
+                if (holder.MoveSpeed > 0f || holder.TurnSpeed > 0f) {
+                    holder.MoveSpeed = 0f;
+                    holder.TurnSpeed = 0f;
 
-                if (cart != null && !cart.Removed && !__instance.FollowingId.HasValue) {
+                    if (cart != null && !cart.Removed && !__instance.FollowingId.HasValue) {
+                        cart.Velocity = new Vector3(0f, 0f, cart.Velocity.Z);
+                    }
+                }
+
+                return;
+            }
+
+            EntityWrapper target = FindTarget(cart);
+            if (target == null) {
+                if (holder.MoveSpeed > 0f || holder.TurnSpeed > 0f) {
+                    holder.MoveSpeed = 0f;
+                    holder.TurnSpeed = 0f;
                     cart.Velocity = new Vector3(0f, 0f, cart.Velocity.Z);
                 }
+
+                return;
             }
 
-            return;
-        }
+            Vector2 toTarget = target.Position2 - cart.Position2;
+            float distance = toTarget.Length();
+            if (distance <= 0.01f) {
+                return;
+            }
 
-        EntityWrapper target = FindTarget(cart);
-        if (target == null) {
-            if (holder.MoveSpeed > 0f || holder.TurnSpeed > 0f) {
-                holder.MoveSpeed = 0f;
+            Vector2 direction = toTarget / distance;
+
+            holder.MoveSpeed = Math.Min(holder.MoveSpeed + ConnectAccel * cart.Fdt, MaxConnectSpeed);
+            cart.Velocity = new Vector3(direction.X * holder.MoveSpeed, direction.Y * holder.MoveSpeed, cart.Velocity.Z);
+
+            float targetDirection = direction.ToFloatDirection();
+            holder.TurnSpeed = Math.Min(holder.TurnSpeed + TurnAccel * cart.Fdt, MaxTurnSpeed);
+            cart.Direction = RotateTowards(cart.Direction, targetDirection, holder.TurnSpeed * cart.Fdt, out bool reachedDirection);
+
+            if (reachedDirection) {
                 holder.TurnSpeed = 0f;
-                cart.Velocity = new Vector3(0f, 0f, cart.Velocity.Z);
             }
-
-            return;
         }
-
-        Vector2 toTarget = target.Position2 - cart.Position2;
-        float distance = toTarget.Length();
-        if (distance <= 0.01f) {
-            return;
-        }
-
-        Vector2 direction = toTarget / distance;
-
-        holder.MoveSpeed = Math.Min(holder.MoveSpeed + ConnectAccel * cart.Fdt, MaxConnectSpeed);
-        cart.Velocity = new Vector3(direction.X * holder.MoveSpeed, direction.Y * holder.MoveSpeed, cart.Velocity.Z);
-
-        float targetDirection = direction.ToFloatDirection();
-        holder.TurnSpeed = Math.Min(holder.TurnSpeed + TurnAccel * cart.Fdt, MaxTurnSpeed);
-        cart.Direction = RotateTowards(cart.Direction, targetDirection, holder.TurnSpeed * cart.Fdt, out bool reachedDirection);
-
-        if (reachedDirection) {
-            holder.TurnSpeed = 0f;
+        catch (Exception ex) {
+            ModLog.Fault("ConnectRangePatch.Postfix", ex);
+            throw;
         }
     }
 

@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 using CandideServer.Entities.Controllers;
 using HarmonyLib;
@@ -15,35 +16,43 @@ internal static class CollectRangePatch
 
     private static void Postfix(ServerCart2Controller __instance)
     {
-        if (!ModConfig.Enabled.Value || !ModConfig.CollectRangeEnabled.Value)
+        try
         {
-            return;
-        }
-        int range = ModConfig.CollectRange.Value;
-        if (range <= 0)
-        {
-            return;
-        }
-        EntityWrapper cart = __instance.Entity;
-        if (cart == null || cart.Removed)
-        {
-            return;
-        }
-        float radius = range * WorldInfo.TileSize;
-        // the world reuses this list for every circle query, so the loop walks a copy
-        Candidates.Clear();
-        Candidates.AddRange(cart.System.GetEntitiesTouchingCircleArea(cart.Position2, radius, cart.Position.Z, cart.Position.Z + 8f));
-        foreach (EntityWrapper item in Candidates)
-        {
-            if (!ServerCart2Controller.CanBeAutoPicked(item))
+            if (!ModConfig.Enabled.Value || !ModConfig.CollectRangeEnabled.Value)
             {
-                continue;
+                return;
             }
-            if (!CartAccess.PickupEntity(__instance, item))
+            int range = ModConfig.CollectRange.Value;
+            if (range <= 0)
             {
-                break;
+                return;
             }
+            EntityWrapper cart = __instance.Entity;
+            if (cart == null || cart.Removed)
+            {
+                return;
+            }
+            float radius = range * WorldInfo.TileSize;
+            // the world reuses this list for every circle query, so the loop walks a copy
+            Candidates.Clear();
+            Candidates.AddRange(cart.System.GetEntitiesTouchingCircleArea(cart.Position2, radius, cart.Position.Z, cart.Position.Z + 8f));
+            foreach (EntityWrapper item in Candidates)
+            {
+                if (!ServerCart2Controller.CanBeAutoPicked(item))
+                {
+                    continue;
+                }
+                if (!CartAccess.PickupEntity(__instance, item))
+                {
+                    break;
+                }
+            }
+            Candidates.Clear();
         }
-        Candidates.Clear();
+        catch (Exception ex)
+        {
+            ModLog.Fault("CollectRangePatch.Postfix", ex);
+            throw;
+        }
     }
 }

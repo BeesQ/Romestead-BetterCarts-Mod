@@ -60,110 +60,116 @@ internal static class StockpileRangePatch {
         private static bool Prepare() { return ModConfig.LoadStockpileRange.Value; }
 
         private static void Postfix(ServerMaterialStorageStackController __instance) {
-            if (!ModConfig.Enabled.Value || !ModConfig.StockpileRangeEnabled.Value) {
-                return;
-            }
-            int range = ModConfig.StockpileRange.Value;
-            if (range <= 0) {
-                return;
-            }
-            bool whilePulled = ModConfig.StockpileWhilePulled.Value;
-            bool whileParked = ModConfig.StockpileWhileParked.Value;
-            if (!whilePulled && !whileParked) {
-                return;
-            }
-            if (StorageTypeRef(__instance) != IOStorageType.Output) {
-                return;
-            }
-            var building = ServerTempState.CurrentlyUpdatingBuilding;
-            if (building == null || !building.InstanceModel.OutputResourceStorageId.HasValue) {
-                return;
-            }
-            Guid outputStorageId = building.InstanceModel.OutputResourceStorageId.Value;
-            // storage-style buildings register ONE storage as both input and output - taking from them would loop with Deposit Range
-            if (building.InstanceModel.ResourceStorageId.HasValue && building.InstanceModel.ResourceStorageId.Value == outputStorageId) {
-                return;
-            }
-            EntityWrapper stack = __instance.Entity;
-            if (stack == null || stack.Removed) {
-                return;
-            }
-            TimerHolder timer = StackTimers.GetOrCreateValue(__instance);
-            timer.Value -= stack.Fdt;
-            if (timer.Value > 0f) {
-                return;
-            }
-            timer.Value += CheckTime;
-            var worldModel = ServerTempState.CurrentlyUpdatingWorldModel;
-            if (worldModel == null) {
-                return;
-            }
-            Guid targetWorldId = worldModel.ParentWorldId ?? worldModel.Id;
-            if (!ServerGameState.TryGetResourceStorage(outputStorageId, out var storage)) {
-                return;
-            }
-            string solidResourceId = null;
-            Guid solidBaseGuid = Guid.Empty;
-            foreach (KeyValuePair<string, int> resourceAmount in storage.ResourceAmounts) {
-                if (resourceAmount.Value <= 0 || IsBucketResource(resourceAmount.Key)) {
-                    continue;
+            try {
+                if (!ModConfig.Enabled.Value || !ModConfig.StockpileRangeEnabled.Value) {
+                    return;
                 }
-                var resource = ConstructionResourcesDataBase.GetConstructionResourceOrNull(resourceAmount.Key);
-                if (resource.HasValue && resource.Value.DefaultBaseGuid.HasValue) {
-                    solidResourceId = resourceAmount.Key;
-                    solidBaseGuid = resource.Value.DefaultBaseGuid.Value;
-                    break;
+                int range = ModConfig.StockpileRange.Value;
+                if (range <= 0) {
+                    return;
+                }
+                bool whilePulled = ModConfig.StockpileWhilePulled.Value;
+                bool whileParked = ModConfig.StockpileWhileParked.Value;
+                if (!whilePulled && !whileParked) {
+                    return;
+                }
+                if (StorageTypeRef(__instance) != IOStorageType.Output) {
+                    return;
+                }
+                var building = ServerTempState.CurrentlyUpdatingBuilding;
+                if (building == null || !building.InstanceModel.OutputResourceStorageId.HasValue) {
+                    return;
+                }
+                Guid outputStorageId = building.InstanceModel.OutputResourceStorageId.Value;
+                // storage-style buildings register ONE storage as both input and output - taking from them would loop with Deposit Range
+                if (building.InstanceModel.ResourceStorageId.HasValue && building.InstanceModel.ResourceStorageId.Value == outputStorageId) {
+                    return;
+                }
+                EntityWrapper stack = __instance.Entity;
+                if (stack == null || stack.Removed) {
+                    return;
+                }
+                TimerHolder timer = StackTimers.GetOrCreateValue(__instance);
+                timer.Value -= stack.Fdt;
+                if (timer.Value > 0f) {
+                    return;
+                }
+                timer.Value += CheckTime;
+                var worldModel = ServerTempState.CurrentlyUpdatingWorldModel;
+                if (worldModel == null) {
+                    return;
+                }
+                Guid targetWorldId = worldModel.ParentWorldId ?? worldModel.Id;
+                if (!ServerGameState.TryGetResourceStorage(outputStorageId, out var storage)) {
+                    return;
+                }
+                string solidResourceId = null;
+                Guid solidBaseGuid = Guid.Empty;
+                foreach (KeyValuePair<string, int> resourceAmount in storage.ResourceAmounts) {
+                    if (resourceAmount.Value <= 0 || IsBucketResource(resourceAmount.Key)) {
+                        continue;
+                    }
+                    var resource = ConstructionResourcesDataBase.GetConstructionResourceOrNull(resourceAmount.Key);
+                    if (resource.HasValue && resource.Value.DefaultBaseGuid.HasValue) {
+                        solidResourceId = resourceAmount.Key;
+                        solidBaseGuid = resource.Value.DefaultBaseGuid.Value;
+                        break;
+                    }
+                }
+                if (solidResourceId == null) {
+                    return;
+                }
+                var collisions = ServerWorldHandler.GetEntityCollisionsOrNull(targetWorldId);
+                if (collisions == null) {
+                    return;
+                }
+                float tileSize = WorldInfo.TileSize;
+                Vector3 stackWorldPosition = building.InstanceModel.TileBounds.Location.ToVector3Xy() * tileSize + stack.Position;
+                int reach = (int)(range * tileSize);
+                // no footprint exclusion: producers have no pits, and production TileBounds can swallow the whole take zone (Quarry/Lumberjack)
+                Rectangle takeZone = new Rectangle((int)(stackWorldPosition.X - tileSize * 0.5f),
+                    (int)(stackWorldPosition.Y - tileSize * 0.5f), (int)tileSize, (int)tileSize);
+                takeZone.Inflate(reach, reach);
+                Vector2 stackCenter = new Vector2(stackWorldPosition.X, stackWorldPosition.Y);
+                ReuseList.Clear();
+                collisions.GetEntitiesInRectangleArea(takeZone, ReuseList);
+                ServerCart2Controller bestCart = null;
+                float bestCartDistanceSquared = float.MaxValue;
+                foreach (EntityWrapper candidate in ReuseList) {
+                    if (candidate.Removed || candidate.PositionZ > MaxTakeZ) {
+                        continue;
+                    }
+                    if (!(candidate.Controller is ServerCart2Controller cart)) {
+                        continue;
+                    }
+                    if (!IsEligible(cart, whilePulled, whileParked) || !HasChainCapacity(cart)) {
+                        continue;
+                    }
+                    float distanceSquared = Vector2.DistanceSquared(candidate.Position2, stackCenter);
+                    if (distanceSquared < bestCartDistanceSquared) {
+                        bestCartDistanceSquared = distanceSquared;
+                        bestCart = cart;
+                    }
+                }
+                if (bestCart == null) {
+                    return;
+                }
+                ReuseTake[0] = new ResourceAmount { ResourceId = solidResourceId, Amount = 1 };
+                if (InternalResourceStorageServerManager.TryRemoveResources_Destructive(storage, ReuseTake)) {
+                    EntityWrapper cartEntity = bestCart.Entity;
+                    ReuseSpawnList.Clear();
+                    ReuseSpawnList.Add(new RequestSpawnEntityMessage {
+                        Position = cartEntity.Position,
+                        Velocity = Vector3.Zero,
+                        WorldId = targetWorldId,
+                        EntityBaseId = solidBaseGuid
+                    });
+                    EntityServerManager.SpawnEntities(ReuseSpawnList, targetWorldId);
                 }
             }
-            if (solidResourceId == null) {
-                return;
-            }
-            var collisions = ServerWorldHandler.GetEntityCollisionsOrNull(targetWorldId);
-            if (collisions == null) {
-                return;
-            }
-            float tileSize = WorldInfo.TileSize;
-            Vector3 stackWorldPosition = building.InstanceModel.TileBounds.Location.ToVector3Xy() * tileSize + stack.Position;
-            int reach = (int)(range * tileSize);
-            // no footprint exclusion: producers have no pits, and production TileBounds can swallow the whole take zone (Quarry/Lumberjack)
-            Rectangle takeZone = new Rectangle((int)(stackWorldPosition.X - tileSize * 0.5f),
-                (int)(stackWorldPosition.Y - tileSize * 0.5f), (int)tileSize, (int)tileSize);
-            takeZone.Inflate(reach, reach);
-            Vector2 stackCenter = new Vector2(stackWorldPosition.X, stackWorldPosition.Y);
-            ReuseList.Clear();
-            collisions.GetEntitiesInRectangleArea(takeZone, ReuseList);
-            ServerCart2Controller bestCart = null;
-            float bestCartDistanceSquared = float.MaxValue;
-            foreach (EntityWrapper candidate in ReuseList) {
-                if (candidate.Removed || candidate.PositionZ > MaxTakeZ) {
-                    continue;
-                }
-                if (!(candidate.Controller is ServerCart2Controller cart)) {
-                    continue;
-                }
-                if (!IsEligible(cart, whilePulled, whileParked) || !HasChainCapacity(cart)) {
-                    continue;
-                }
-                float distanceSquared = Vector2.DistanceSquared(candidate.Position2, stackCenter);
-                if (distanceSquared < bestCartDistanceSquared) {
-                    bestCartDistanceSquared = distanceSquared;
-                    bestCart = cart;
-                }
-            }
-            if (bestCart == null) {
-                return;
-            }
-            ReuseTake[0] = new ResourceAmount { ResourceId = solidResourceId, Amount = 1 };
-            if (InternalResourceStorageServerManager.TryRemoveResources_Destructive(storage, ReuseTake)) {
-                EntityWrapper cartEntity = bestCart.Entity;
-                ReuseSpawnList.Clear();
-                ReuseSpawnList.Add(new RequestSpawnEntityMessage {
-                    Position = cartEntity.Position,
-                    Velocity = Vector3.Zero,
-                    WorldId = targetWorldId,
-                    EntityBaseId = solidBaseGuid
-                });
-                EntityServerManager.SpawnEntities(ReuseSpawnList, targetWorldId);
+            catch (Exception ex) {
+                ModLog.Fault("StockpileRangePatch.TakeSolidsFromOutputStacks.Postfix", ex);
+                throw;
             }
         }
     }
@@ -174,8 +180,14 @@ internal static class StockpileRangePatch {
         private static bool Prepare() { return ModConfig.LoadStockpileRange.Value; }
 
         private static void Postfix(AbstractController __instance) {
-            if (__instance is ServerMaterialStorageFluidContainerController vat) {
-                TryFillBuckets(vat);
+            try {
+                if (__instance is ServerMaterialStorageFluidContainerController vat) {
+                    TryFillBuckets(vat);
+                }
+            }
+            catch (Exception ex) {
+                ModLog.Fault("StockpileRangePatch.FillBucketsFromFluidVats.Postfix", ex);
+                throw;
             }
         }
     }

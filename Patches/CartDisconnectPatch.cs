@@ -11,11 +11,23 @@ internal static class CartDisconnectPatch {
         private static bool Prepare() { return ModConfig.LoadCartOverlays.Value; }
 
         private static void Prefix(Cart2Controller __instance, out Guid? __state) {
-            __state = __instance.FollowingId;
+            try {
+                __state = __instance.FollowingId;
+            }
+            catch (Exception ex) {
+                ModLog.Fault("CartDisconnectPatch.Sync.Prefix", ex);
+                throw;
+            }
         }
 
         private static void Postfix(Cart2Controller __instance, Guid? __state) {
-            CartDisconnect.NoteClientDetach(__instance, __state);
+            try {
+                CartDisconnect.NoteClientDetach(__instance, __state);
+            }
+            catch (Exception ex) {
+                ModLog.Fault("CartDisconnectPatch.Sync.Postfix", ex);
+                throw;
+            }
         }
     }
 }

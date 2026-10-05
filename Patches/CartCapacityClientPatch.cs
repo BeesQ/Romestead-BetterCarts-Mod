@@ -1,3 +1,4 @@
+using System;
 using Candide.Entities.Controllers.Other;
 using HarmonyLib;
 using Microsoft.Xna.Framework;
@@ -12,7 +13,13 @@ internal static class CartCapacityClientPatch {
         private static bool Prepare() { return ModConfig.LoadCartCapacity.Value; }
 
         private static void Postfix(Cart2Controller __instance) {
-            CartCargoClient.SyncSlots(__instance);
+            try {
+                CartCargoClient.SyncSlots(__instance);
+            }
+            catch (Exception ex) {
+                ModLog.Fault("CartCapacityClientPatch.Sync.Postfix", ex);
+                throw;
+            }
         }
     }
 
@@ -21,7 +28,13 @@ internal static class CartCapacityClientPatch {
         private static bool Prepare() { return ModConfig.LoadCartCapacity.Value; }
 
         private static void Postfix(Cart2Controller __instance) {
-            CartCargoClient.UpdateSlots(__instance);
+            try {
+                CartCargoClient.UpdateSlots(__instance);
+            }
+            catch (Exception ex) {
+                ModLog.Fault("CartCapacityClientPatch.Hold.Postfix", ex);
+                throw;
+            }
         }
     }
 
@@ -30,7 +43,13 @@ internal static class CartCapacityClientPatch {
         private static bool Prepare() { return ModConfig.LoadCartCapacity.Value; }
 
         private static void Postfix(Cart2Controller __instance) {
-            CartCargoClient.ReleaseAll(__instance);
+            try {
+                CartCargoClient.ReleaseAll(__instance);
+            }
+            catch (Exception ex) {
+                ModLog.Fault("CartCapacityClientPatch.Release.Postfix", ex);
+                throw;
+            }
         }
     }
 
@@ -39,7 +58,13 @@ internal static class CartCapacityClientPatch {
         private static bool Prepare() { return ModConfig.LoadCartCapacity.Value; }
 
         private static void Postfix() {
-            CartCapacity.NoteWorldLoaded("client");
+            try {
+                CartCapacity.NoteWorldLoaded("client");
+            }
+            catch (Exception ex) {
+                ModLog.Fault("CartCapacityClientPatch.Flags.Postfix", ex);
+                throw;
+            }
         }
     }
 }

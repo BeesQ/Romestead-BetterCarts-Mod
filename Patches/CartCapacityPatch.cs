@@ -1,3 +1,4 @@
+using System;
 using CandideServer.Entities.Controllers;
 using HarmonyLib;
 using Microsoft.Xna.Framework;
@@ -13,51 +14,63 @@ internal static class CartCapacityPatch {
         // Priority.First keeps this ahead of Iron Cart's false-returning prefix; it must return true unless it deliberately blocks
         [HarmonyPriority(Priority.First)]
         private static bool Prefix(ServerCart2Controller __instance, ref bool __result, out bool __state) {
-            __state = false;
-            if (!CartCapacity.TryGetEnforcedCapacity(__instance.Entity, out int capacity)) {
-                return true;
+            try {
+                __state = false;
+                if (!CartCapacity.TryGetEnforcedCapacity(__instance.Entity, out int capacity)) {
+                    return true;
+                }
+                int occupied = CartCargo.GetOccupied(__instance);
+                if (occupied < capacity) {
+                    return true;
+                }
+                __state = true;
+                __result = false;
+                if (ModLog.AdvancedEnabled) {
+                    ModLog.AdvancedOnChange("block:" + __instance.Entity.Id,
+                        "BLOCK cart=" + __instance.Entity.Id + " occupied=" + occupied + " >= cap=" + capacity);
+                }
+                return false;
             }
-            int occupied = CartCargo.GetOccupied(__instance);
-            if (occupied < capacity) {
-                return true;
+            catch (Exception ex) {
+                ModLog.Fault("CartCapacityPatch.Capacity.Prefix", ex);
+                throw;
             }
-            __state = true;
-            __result = false;
-            if (ModLog.AdvancedEnabled) {
-                ModLog.AdvancedOnChange("block:" + __instance.Entity.Id,
-                    "BLOCK cart=" + __instance.Entity.Id + " occupied=" + occupied + " >= cap=" + capacity);
-            }
-            return false;
         }
 
         // Priority.First puts the extend ahead of ChainOverflowPatch, so a Cart fills its own configured slots before it spills
         [HarmonyPriority(Priority.First)]
         private static void Postfix(ServerCart2Controller __instance, EntityWrapper entity, ref bool __result, bool __state) {
-            if (__result) {
-                CartCargo.Invalidate(__instance);
-                return;
+            try {
+                if (__result) {
+                    CartCargo.Invalidate(__instance);
+                    return;
+                }
+                if (__state) {
+                    return;
+                }
+                if (!CartCapacity.TryGetEnforcedCapacity(__instance.Entity, out int capacity)) {
+                    return;
+                }
+                if (entity == null || entity.Removed || entity.CarrierId.HasValue) {
+                    return;
+                }
+                if (!CartCargo.CanTakeExtra(__instance)) {
+                    return;
+                }
+                if (CartCargo.GetOccupied(__instance) >= capacity) {
+                    return;
+                }
+                if (ModLog.AdvancedEnabled) {
+                    ModLog.Advanced("EXTEND cart=" + __instance.Entity.Id + " taking " + entity.Id + " (cap=" + capacity
+                        + " occupied=" + CartCargo.GetOccupied(__instance) + ")");
+                }
+                CartCargo.PinExtra(__instance, entity);
+                __result = true;
             }
-            if (__state) {
-                return;
+            catch (Exception ex) {
+                ModLog.Fault("CartCapacityPatch.Capacity.Postfix", ex);
+                throw;
             }
-            if (!CartCapacity.TryGetEnforcedCapacity(__instance.Entity, out int capacity)) {
-                return;
-            }
-            if (entity == null || entity.Removed || entity.CarrierId.HasValue) {
-                return;
-            }
-            if (!CartCargo.CanTakeExtra(__instance)) {
-                return;
-            }
-            if (CartCargo.GetOccupied(__instance) >= capacity) {
-                return;
-            }
-            if (ModLog.AdvancedEnabled) {
-                ModLog.Advanced("EXTEND cart=" + __instance.Entity.Id + " taking " + entity.Id + " (cap=" + capacity
-                    + " occupied=" + CartCargo.GetOccupied(__instance) + ")");
-            }
-            CartCargo.PinExtra(__instance, entity);
-            __result = true;
         }
     }
 
@@ -66,7 +79,13 @@ internal static class CartCapacityPatch {
         private static bool Prepare() { return ModConfig.LoadCartCapacity.Value; }
 
         private static void Postfix(ServerCart2Controller __instance) {
-            CartCargo.Tick(__instance);
+            try {
+                CartCargo.Tick(__instance);
+            }
+            catch (Exception ex) {
+                ModLog.Fault("CartCapacityPatch.Extras.Postfix", ex);
+                throw;
+            }
         }
     }
 
@@ -77,12 +96,18 @@ internal static class CartCapacityPatch {
 
         private static void Postfix(ServerCart2Controller __instance,
             EntityRemoveInfo entityRemoveInfo) {
-            EntityRemoveType reason = entityRemoveInfo.RemoveType;
-            bool clearStoredCargo = reason != EntityRemoveType.RemoveFromSimulation
-                && reason != EntityRemoveType.Unloaded
-                && reason != EntityRemoveType.ChangingWorld;
+            try {
+                EntityRemoveType reason = entityRemoveInfo.RemoveType;
+                bool clearStoredCargo = reason != EntityRemoveType.RemoveFromSimulation
+                    && reason != EntityRemoveType.Unloaded
+                    && reason != EntityRemoveType.ChangingWorld;
 
-            CartCargo.ReleaseAll(__instance, clearStoredCargo);
+                CartCargo.ReleaseAll(__instance, clearStoredCargo);
+            }
+            catch (Exception ex) {
+                ModLog.Fault("CartCapacityPatch.ReleaseOnRemove.Postfix", ex);
+                throw;
+            }
         }
     }
 
@@ -91,7 +116,13 @@ internal static class CartCapacityPatch {
         private static bool Prepare() { return ModConfig.LoadCartCapacity.Value; }
 
         private static void Postfix() {
-            CartCapacity.NoteWorldLoaded("server");
+            try {
+                CartCapacity.NoteWorldLoaded("server");
+            }
+            catch (Exception ex) {
+                ModLog.Fault("CartCapacityPatch.Flags.Postfix", ex);
+                throw;
+            }
         }
     }
 }

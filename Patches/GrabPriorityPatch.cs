@@ -35,41 +35,47 @@ internal static class GrabPriorityPatch {
     private static bool Prepare() { return ModConfig.LoadGrabPriority.Value || ModConfig.LoadCartCapacity.Value; }
 
     private static void Postfix(EntityWrapper grabbingEntity, float radius, ref EntityWrapper __result) {
-        if (!ModConfig.Enabled.Value) {
-            return;
-        }
-        if (grabbingEntity == null || grabbingEntity.Removed) {
-            return;
-        }
-        if (__result != null && (!ModConfig.LoadGrabPriority.Value || !ModConfig.GrabPriorityEnabled.Value)) {
-            return;
-        }
-        if (__result == null && !ModConfig.LoadCartCapacity.Value) {
-            return;
-        }
-
-        EntityWrapper cart = __result != null
-            ? CartCarrying(__result)
-            : NearestCart(grabbingEntity, radius);
-        if (cart == null) {
-            return;
-        }
-
-        CollectCargo(cart);
-        if (Cargo.Count == 0) {
-            return;
-        }
-
-        if (ModConfig.LoadGrabPriority.Value && ModConfig.GrabPriorityEnabled.Value) {
-            EntityWrapper preferred = Lowest(grabbingEntity, Tier.MassivePot) ?? Lowest(grabbingEntity, Tier.EmptyBucket);
-            if (preferred != null) {
-                __result = preferred;
+        try {
+            if (!ModConfig.Enabled.Value) {
                 return;
             }
-        }
+            if (grabbingEntity == null || grabbingEntity.Removed) {
+                return;
+            }
+            if (__result != null && (!ModConfig.LoadGrabPriority.Value || !ModConfig.GrabPriorityEnabled.Value)) {
+                return;
+            }
+            if (__result == null && !ModConfig.LoadCartCapacity.Value) {
+                return;
+            }
 
-        if (__result == null) {
-            __result = Lowest(grabbingEntity, Tier.Any);
+            EntityWrapper cart = __result != null
+                ? CartCarrying(__result)
+                : NearestCart(grabbingEntity, radius);
+            if (cart == null) {
+                return;
+            }
+
+            CollectCargo(cart);
+            if (Cargo.Count == 0) {
+                return;
+            }
+
+            if (ModConfig.LoadGrabPriority.Value && ModConfig.GrabPriorityEnabled.Value) {
+                EntityWrapper preferred = Lowest(grabbingEntity, Tier.MassivePot) ?? Lowest(grabbingEntity, Tier.EmptyBucket);
+                if (preferred != null) {
+                    __result = preferred;
+                    return;
+                }
+            }
+
+            if (__result == null) {
+                __result = Lowest(grabbingEntity, Tier.Any);
+            }
+        }
+        catch (Exception ex) {
+            ModLog.Fault("GrabPriorityPatch.Postfix", ex);
+            throw;
         }
     }
 

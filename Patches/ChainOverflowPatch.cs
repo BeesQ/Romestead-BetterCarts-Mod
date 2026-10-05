@@ -19,19 +19,25 @@ internal static class ChainOverflowPatch {
     private static bool Prepare() { return ModConfig.LoadChainOverflow.Value; }
 
     private static void Postfix(ServerCart2Controller __instance, EntityWrapper entity, ref bool __result) {
-        if (__result || _walkingChain) {
-            return;
-        }
-        if (!ModConfig.Enabled.Value || !ModConfig.ChainOverflowEnabled.Value) {
-            return;
-        }
-        // PickupEntity calls below re-enter this postfix; the flag stops the nested walk
-        _walkingChain = true;
         try {
-            __result = TryPickupIntoChain(__instance, entity);
+            if (__result || _walkingChain) {
+                return;
+            }
+            if (!ModConfig.Enabled.Value || !ModConfig.ChainOverflowEnabled.Value) {
+                return;
+            }
+            // PickupEntity calls below re-enter this postfix; the flag stops the nested walk
+            _walkingChain = true;
+            try {
+                __result = TryPickupIntoChain(__instance, entity);
+            }
+            finally {
+                _walkingChain = false;
+            }
         }
-        finally {
-            _walkingChain = false;
+        catch (Exception ex) {
+            ModLog.Fault("ChainOverflowPatch.Postfix", ex);
+            throw;
         }
     }
 

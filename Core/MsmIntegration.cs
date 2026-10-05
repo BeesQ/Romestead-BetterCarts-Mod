@@ -97,6 +97,7 @@ internal static class MsmIntegration {
         SetMember(options, "ThunderstoreTeam", "BeesQ");
         SetMember(options, "ThunderstoreModName", "BetterCarts");
         SetMember(options, "UpdateManifestUrl", "https://raw.githubusercontent.com/BeesQ/Romestead-BetterCarts-Mod/main/version.json");
+        SetMember(options, "ShowInGame", false);
         string iconPath = Path.Combine(Path.GetDirectoryName(typeof(BetterCartsPlugin).Assembly.Location) ?? string.Empty, "icon.png");
         if (File.Exists(iconPath)) {
             SetMember(options, "IconPath", iconPath);

@@ -71,16 +71,6 @@ internal static class ModLog {
         WriteFile("ERROR " + message);
     }
 
-    internal static void Guard(string site, Action body) {
-        try {
-            body();
-        }
-        catch (Exception ex) {
-            Fault(site, ex);
-            throw;
-        }
-    }
-
     internal static void Watch(string site, Action body) {
         try {
             body();
@@ -96,13 +86,18 @@ internal static class ModLog {
                 return;
             }
         }
-        string header = "FAULT in " + site + " - this is a Better Carts bug, please report it with this block";
-        if (_log != null) {
-            _log.LogError(Prefix() + header);
-            _log.LogError(Prefix() + ex);
+        // a failing log must never replace the exception being reported, or escape Watch
+        try {
+            string header = "FAULT in " + site + " - this is a Better Carts bug, please report it with this block";
+            if (_log != null) {
+                _log.LogError(Prefix() + header);
+                _log.LogError(Prefix() + ex);
+            }
+            WriteFile("ERROR " + header);
+            WriteFile("ERROR " + ex);
         }
-        WriteFile("ERROR " + header);
-        WriteFile("ERROR " + ex);
+        catch {
+        }
     }
 
     internal static void Reset(string key) {

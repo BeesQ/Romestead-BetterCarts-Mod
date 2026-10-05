@@ -162,8 +162,8 @@ internal static class ModConfig {
                 EntryTag("Write diagnostic logs (needs restart)", 1, hidden: !troubleshooting))));
         DiagnosticsArmed = troubleshooting && DiagnosticLogs.Value;
         DiagSave = Track(config.Bind("Troubleshooting", "Save Watch", true,
-            new ConfigDescription("Logs save duration, changes during saving and save failures.", null,
-                EntryTag("Watch saving", 2, hidden: !troubleshooting))));
+            new ConfigDescription("Logs save duration, changes during saving and save failures. Requires a restart.", null,
+                EntryTag("Watch saving (needs restart)", 2, hidden: !troubleshooting))));
         // Runs a background thread for the whole session.
         DiagMemory = Track(config.Bind("Troubleshooting", "Memory Watch", false,
             new ConfigDescription("Logs memory usage during saves, game pauses and stalls using a background thread. Requires a restart.", null,

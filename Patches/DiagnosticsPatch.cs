@@ -15,6 +15,10 @@ internal static class DiagnosticsPatch {
         return ModConfig.DiagnosticsArmed;
     }
 
+    private static bool SaveHooksArmed() {
+        return Armed() && (ModConfig.DiagSave.Value || ModConfig.DiagMemory.Value);
+    }
+
     private static MethodBase FirstMethod(Type owner, params string[] names) {
         foreach (string name in names) {
             MethodBase found = AccessTools.Method(owner, name);
@@ -27,7 +31,7 @@ internal static class DiagnosticsPatch {
 
     [HarmonyPatch(typeof(GameSaveManager), nameof(GameSaveManager.SaveGameState))]
     private static class Snapshot {
-        private static bool Prepare() { return Armed(); }
+        private static bool Prepare() { return SaveHooksArmed(); }
 
         private static void Prefix(bool forOffThreadSerializing) {
             ModLog.Watch("SaveGameState.Prefix",
@@ -54,7 +58,7 @@ internal static class DiagnosticsPatch {
 
     [HarmonyPatch(typeof(GameSaveManager), nameof(GameSaveManager.SaveGameToDirectory))]
     private static class Serialize {
-        private static bool Prepare() { return Armed(); }
+        private static bool Prepare() { return SaveHooksArmed(); }
 
         private static void Prefix() {
             ModLog.Watch("SaveGameToDirectory.Prefix", ModDiagnostics.NoteSerializeStart);

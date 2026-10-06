@@ -32,6 +32,7 @@ internal static class ModConfig {
     internal static ConfigEntry<bool> CartOverlayShowVanilla;
     internal static ConfigEntry<bool> CartOverlayShowEmpty;
     internal static ConfigEntry<bool> CartOverlayDisconnectMessage;
+    internal static ConfigEntry<bool> CartOverlayProtectionMessage;
     internal static ConfigEntry<bool> ConstructionSiteProtectionEnabled;
     internal static ConfigEntry<bool> StockpileRangeEnabled;
     internal static ConfigEntry<int> StockpileRange;
@@ -148,8 +149,11 @@ internal static class ModConfig {
         CartOverlayDisconnectMessage = Track(config.Bind("Cart Overlays", "Disconnect Message", true,
             new ConfigDescription("Notifies the pulling player when a Cart disconnects from the chain by itself.", null,
                 EntryTag("Show a message when a Cart disconnects", 4, hidden: !CartOverlaysEnabled.Value))));
+        CartOverlayProtectionMessage = Track(config.Bind("Cart Overlays", "Protection Message", true,
+            new ConfigDescription("Shows a message the first time a Cart you pull can't pick up an item because of Construction Site Protection. Appears once per player per world load.", null,
+                EntryTag("Show a message when Construction Site Protection keeps an item", 5, hidden: !CartOverlaysEnabled.Value))));
         ConstructionSiteProtectionEnabled = Track(config.Bind("Construction Site Protection", "Enabled", true,
-            new ConfigDescription("Carts leave loose materials that a Construction Site still needs. Spare materials and items the site does not need can still be picked up. Applies to every way a Cart picks items up.", null,
+            new ConfigDescription("Carts leave loose materials that a Construction Site still needs. Spare materials and items the site does not need can still be picked up.", null,
                 SectionTag("Construction Site Protection", 6), EntryTag("Leave needed materials on Construction Sites", 0))));
         StockpileRangeEnabled = Track(config.Bind("Stockpile Range", "Enabled", true,
             new ConfigDescription("Carts collect resources from building output stockpiles within range. Solid resources use free slots; bucket resources fill empty Buckets.", null,

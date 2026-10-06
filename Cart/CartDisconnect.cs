@@ -43,7 +43,7 @@ internal static class CartDisconnect {
     }
 
     // the same structural walk Connect Range uses: follow the chain until it stops being a cart, and the entity it ends at is whoever was pulling
-    private static bool PulledByLocalPlayer(Guid start) {
+    internal static bool PulledByLocalPlayer(Guid start) {
         var localPlayer = GameState.LocalPlayer;
         if (localPlayer == null) {
             return false;

@@ -369,6 +369,9 @@ internal static class StockpileRangePatch {
     }
 
     private static bool IsEligible(ServerCart2Controller cart, bool whilePulled, bool whileParked) {
+        if (ConstructionSiteProtection.Active && ConstructionSiteProtection.IsOnSite(cart.Entity)) {
+            return false;
+        }
         return IsChainPulled(cart) ? whilePulled : whileParked;
     }
 

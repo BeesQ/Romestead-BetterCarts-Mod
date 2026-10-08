@@ -1,14 +1,10 @@
 using System;
 using System.Runtime.CompilerServices;
 using Candide.Entities.Controllers.Other;
-using Candide.GameModels;
-using Candide.Graphics;
-using CandideCreator.Shared.Helpers;
 using CandideServer;
 using CandideServer.Entities;
 using CandideServer.Entities.Controllers;
 using CandideServer.ServerManagers;
-using Microsoft.Xna.Framework;
 using Shared.Entity;
 
 namespace BetterCarts;
@@ -18,8 +14,6 @@ internal static class ConstructionSiteMessage {
     private const byte EffectId = 201;
     private const int SendIntervalMs = 3000;
     private const int MaxChainWalk = 32;
-    private const float TextHeight = 40f;
-    private const string Message = "Construction Site Protection is ON,\ncan't pick up this item";
 
     private sealed class SendState {
         public long NextSendTick;
@@ -27,20 +21,6 @@ internal static class ConstructionSiteMessage {
 
     private static readonly ConditionalWeakTable<ServerCart2Controller, SendState> SendStates =
         new ConditionalWeakTable<ServerCart2Controller, SendState>();
-
-    private static bool _shown;
-
-    private static bool Announcing {
-        get {
-            if (ModConfig.Enabled == null || !ModConfig.Enabled.Value) {
-                return false;
-            }
-            if (ModConfig.CartOverlaysEnabled == null || !ModConfig.CartOverlaysEnabled.Value) {
-                return false;
-            }
-            return ModConfig.CartOverlayProtectionMessage != null && ModConfig.CartOverlayProtectionMessage.Value;
-        }
-    }
 
     internal static void NoteRefused(ServerCart2Controller cart) {
         EntityWrapper cartEntity = cart.Entity;
@@ -59,24 +39,17 @@ internal static class ConstructionSiteMessage {
     }
 
     internal static void NoteEffect(Cart2Controller cart, byte vfx) {
-        if (vfx != EffectId || _shown || cart == null || !Announcing) {
+        if (vfx != EffectId || cart == null || !OverlayText.CanShow(OverlayText.ProtectionKept)) {
             return;
         }
         EntityWrapper cartEntity = cart.Entity;
         if (cartEntity == null || cartEntity.Removed || !cart.FollowingId.HasValue) {
             return;
         }
-        if (!CartDisconnect.PulledByLocalPlayer(cart.FollowingId.Value)) {
+        if (!OverlayText.PulledByLocalPlayer(cart.FollowingId.Value)) {
             return;
         }
-        _shown = true;
-        FloatingTextSystem.AddNewFloatText(Message,
-            cartEntity.Position.ToScreenSpace() + new Vector2(0f, -TextHeight),
-            StyleHelper.TextGreenColor);
-    }
-
-    internal static void Reset() {
-        _shown = false;
+        OverlayText.Show(OverlayText.ProtectionKept, cartEntity);
     }
 
     private static bool PulledByPlayer(ServerCart2Controller cart) {

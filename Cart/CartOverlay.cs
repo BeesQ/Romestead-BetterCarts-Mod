@@ -6,7 +6,6 @@ using Candide;
 using Candide.Entities.Controllers.Other;
 using Candide.GameModels;
 using Candide.Graphics;
-using Candide.Graphics.Fonts;
 using CandideCreator.Shared.Graphics;
 using CandideCreator.Shared.Helpers;
 using FontStashSharp;
@@ -17,41 +16,6 @@ using Shared.Entity;
 namespace BetterCarts;
 
 internal static class CartOverlay {
-    // Font
-    // ArialPixel, Adventurer, Arial, Calibri, Courier
-    private static readonly StaticSpriteFont Font = PixelSpriteFont.ArialPixel;
-
-    // Size
-    // multiplies Globals.InterfaceScale, which is 2 by default. Whole numbers keep the glyph pixels even
-    private const float TextScale = 1f;
-
-    // Height
-    // world units above the cart, applied before the camera transform, so the gap scales with zoom
-    private const float AnchorHeight = 16f;
-
-    // Color
-    // any StyleHelper constant: TextNormalColor, TextYellowColor, TextGreenColor, TextWarningColor
-    private static readonly Color TextColor = StyleHelper.TextNormalColor;
-
-    // Shadow (4-sided)
-    private static readonly bool DrawShadow = true;
-    private static readonly float ShadowOffset = 1f;
-    private static readonly Color ShadowColor = Color.Black;
-
-    // Backing plate
-    // vanilla's own plate is DimGray at 0.3 alpha with 4 x 2 padding
-    private static readonly bool DrawPlate = false;
-    private const float PlatePaddingX = 4f;
-    private const float PlatePaddingY = 2f;
-    private static readonly Color PlateColor = new Color(Color.DimGray, 0.3f);
-
-    // Zoom cull
-    // vanilla hides distant entities while zoomed out; at normal zoom this costs one bool test and hides nothing
-    private static readonly bool CullWhenZoomedOut = true;
-
-    // Viewport cull
-    private const float ViewportCullFactor = 0.8f;
-
     private const int RefreshIntervalMs = 150;
 
     private struct ParsedParameter {
@@ -164,12 +128,12 @@ internal static class CartOverlay {
             return;
         }
         Vector2 cameraCenter = Globals.Game.Camera.CurrentPositionCenter;
-        float cull = batch.GraphicsDevice.Viewport.Width * ViewportCullFactor;
+        float cull = batch.GraphicsDevice.Viewport.Width * OverlayText.ViewportCullFactor;
         cull *= cull;
-        float scale = Globals.InterfaceScale * TextScale;
+        float scale = Globals.InterfaceScale * OverlayText.TextScale;
         Vector2 scaleVector = new Vector2(scale, scale);
         Vector2? scaleArgument = scaleVector;
-        Vector2 anchorOffset = new Vector2(0f, -AnchorHeight);
+        Vector2 anchorOffset = new Vector2(0f, -OverlayText.AnchorHeight);
 
         for (int i = 0; i < Ordered.Count; i++) {
             OverlayState state = Ordered[i];
@@ -187,7 +151,7 @@ internal static class CartOverlay {
             if (Vector2.DistanceSquared(anchor, cameraCenter) > cull) {
                 continue;
             }
-            if (CullWhenZoomedOut && DeferredRenderer.IsOutsideFoW(cartEntity)) {
+            if (OverlayText.CullWhenZoomedOut && DeferredRenderer.IsOutsideFoW(cartEntity)) {
                 continue;
             }
             Vector2 position = Vector2.Transform(anchor, cameraMatrix);
@@ -195,38 +159,38 @@ internal static class CartOverlay {
             position.Y = MathF.Round(position.Y);
             Measure(state, scale, scaleVector);
             float halfWidth = state.TextWidth / 2f;
-            if (DrawPlate) {
-                float plateWidth = state.TextWidth + PlatePaddingX;
-                float plateHeight = state.TextHeight + PlatePaddingY;
-                batch.DrawRect(position - new Vector2(plateWidth / 2f, 1f), plateWidth, plateHeight, PlateColor);
+            if (OverlayText.DrawPlate) {
+                float plateWidth = state.TextWidth + OverlayText.PlatePaddingX;
+                float plateHeight = state.TextHeight + OverlayText.PlatePaddingY;
+                batch.DrawRect(position - new Vector2(plateWidth / 2f, 1f), plateWidth, plateHeight, OverlayText.PlateColor);
             }
-            if (DrawShadow) {
-                DrawCentered(batch, state.Text, position + new Vector2(ShadowOffset, ShadowOffset), halfWidth, scaleArgument, ShadowColor);
-                DrawCentered(batch, state.Text, position + new Vector2(ShadowOffset, -ShadowOffset), halfWidth, scaleArgument, ShadowColor);
-                DrawCentered(batch, state.Text, position + new Vector2(-ShadowOffset, ShadowOffset), halfWidth, scaleArgument, ShadowColor);
-                DrawCentered(batch, state.Text, position + new Vector2(-ShadowOffset, -ShadowOffset), halfWidth, scaleArgument, ShadowColor);
+            if (OverlayText.DrawShadow) {
+                DrawCentered(batch, state.Text, position + new Vector2(OverlayText.ShadowOffset, OverlayText.ShadowOffset), halfWidth, scaleArgument, OverlayText.ShadowColor);
+                DrawCentered(batch, state.Text, position + new Vector2(OverlayText.ShadowOffset, -OverlayText.ShadowOffset), halfWidth, scaleArgument, OverlayText.ShadowColor);
+                DrawCentered(batch, state.Text, position + new Vector2(-OverlayText.ShadowOffset, OverlayText.ShadowOffset), halfWidth, scaleArgument, OverlayText.ShadowColor);
+                DrawCentered(batch, state.Text, position + new Vector2(-OverlayText.ShadowOffset, -OverlayText.ShadowOffset), halfWidth, scaleArgument, OverlayText.ShadowColor);
             }
-            DrawCentered(batch, state.Text, position, halfWidth, scaleArgument, TextColor);
+            DrawCentered(batch, state.Text, position, halfWidth, scaleArgument, OverlayText.TextColor);
         }
     }
 
     private static void Measure(OverlayState state, float scale, Vector2 scaleVector) {
-        if (ReferenceEquals(state.MeasuredText, state.Text) && ReferenceEquals(state.MeasuredFont, Font)
+        if (ReferenceEquals(state.MeasuredText, state.Text) && ReferenceEquals(state.MeasuredFont, OverlayText.Font)
             && state.MeasuredScale == scale) {
             return;
         }
         // X2 and Y2 are width and height ONLY because the measured position is Vector2.Zero - pass a real position and they become far-edge coordinates instead
-        Bounds bounds = Font.TextBounds(state.Text, Vector2.Zero, scaleVector);
+        Bounds bounds = OverlayText.Font.TextBounds(state.Text, Vector2.Zero, scaleVector);
         state.TextWidth = bounds.X2;
         state.TextHeight = bounds.Y2;
         state.MeasuredText = state.Text;
-        state.MeasuredFont = Font;
+        state.MeasuredFont = OverlayText.Font;
         state.MeasuredScale = scale;
     }
 
     // the game's DrawHorizontallyCentered minus its TextBounds call, which it repeats on every draw - five measurements per label per frame with the shadow on. Same DrawText arguments, so the output is pixel-identical
     private static void DrawCentered(SpriteBatch batch, string text, Vector2 position, float halfWidth, Vector2? scale, Color color) {
-        Font.DrawText(batch, text, new Vector2(position.X - halfWidth, position.Y), color, 0f, default(Vector2), scale);
+        OverlayText.Font.DrawText(batch, text, new Vector2(position.X - halfWidth, position.Y), color, 0f, default(Vector2), scale);
     }
 
     private static bool Visible(int count) {

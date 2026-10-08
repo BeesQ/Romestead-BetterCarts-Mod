@@ -1,5 +1,6 @@
 using System;
 using Candide.Entities.Controllers.Other;
+using Candide.GameModels.Controllers;
 using Candide.LegacyUI;
 using HarmonyLib;
 using Microsoft.Xna.Framework;
@@ -69,6 +70,22 @@ internal static class CartOverlayPatch {
             }
             catch (Exception ex) {
                 ModLog.Fault("CartOverlayPatch.Draw.Postfix", ex);
+                throw;
+            }
+        }
+    }
+
+    // runs on every world load and join
+    [HarmonyPatch(typeof(ConstructionSitesController), nameof(ConstructionSitesController.SyncFullGameState))]
+    private static class WorldLoad {
+        private static bool Prepare() { return ModConfig.LoadCartOverlays.Value; }
+
+        private static void Postfix() {
+            try {
+                OverlayText.ResetForWorldLoad();
+            }
+            catch (Exception ex) {
+                ModLog.Fault("CartOverlayPatch.WorldLoad.Postfix", ex);
                 throw;
             }
         }

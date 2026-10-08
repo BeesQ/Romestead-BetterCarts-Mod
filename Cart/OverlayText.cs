@@ -1,9 +1,11 @@
 using System;
 using BepInEx.Configuration;
+using Candide;
 using Candide.Entities.Controllers.Other;
 using Candide.GameModels;
 using Candide.Graphics;
 using Candide.Graphics.Fonts;
+using Candide.LegacyUI;
 using CandideCreator.Shared.Helpers;
 using FontStashSharp;
 using Microsoft.Xna.Framework;
@@ -49,32 +51,42 @@ internal static class OverlayText {
     // Viewport cull
     internal const float ViewportCullFactor = 0.8f;
 
-    // ===== Messages above a Cart, shown with the game's floating text =====
+    // ===== Messages above a Cart, shown with the game's floating or pickup text =====
 
     // Height
     // world units above the cart where a message appears
     private const float MessageHeight = 40f;
 
+    // Text type
+    // Floating: the game's floating text, smooth outlined font, gone after 2 s
+    // Pickup: the game's pickup text, ArialPixel like the count, fades over 5 s
+    internal enum TextType {
+        Floating,
+        Pickup
+    }
+
     internal static readonly Message Disconnect = new Message("Cart disconnected!",
-        StyleHelper.TextWarningColor, oncePerWorldLoad: false, () => ModConfig.CartOverlayDisconnectMessage);
+        StyleHelper.TextWarningColor, TextType.Floating, oncePerWorldLoad: false, () => ModConfig.CartOverlayDisconnectMessage);
 
     internal static readonly Message ProtectionKept = new Message("Construction Site Protection is ON,\ncan't pick up this item",
-        StyleHelper.TextGreenColor, oncePerWorldLoad: true, () => ModConfig.CartOverlayProtectionMessage);
+        StyleHelper.TextGreenColor, TextType.Pickup, oncePerWorldLoad: true, () => ModConfig.CartOverlayProtectionMessage);
 
     private static readonly Message[] Messages = { Disconnect, ProtectionKept };
 
     private const int MaxChainWalk = 32;
 
     internal sealed class Message {
-        internal Message(string text, Color color, bool oncePerWorldLoad, Func<ConfigEntry<bool>> setting) {
+        internal Message(string text, Color color, TextType type, bool oncePerWorldLoad, Func<ConfigEntry<bool>> setting) {
             Text = text;
             Color = color;
+            Type = type;
             OncePerWorldLoad = oncePerWorldLoad;
             Setting = setting;
         }
 
         internal readonly string Text;
         internal readonly Color Color;
+        internal readonly TextType Type;
         internal readonly bool OncePerWorldLoad;
         internal readonly Func<ConfigEntry<bool>> Setting;
         internal bool Shown;
@@ -99,9 +111,15 @@ internal static class OverlayText {
             return;
         }
         message.Shown = true;
-        FloatingTextSystem.AddNewFloatText(message.Text,
-            cartEntity.Position.ToScreenSpace() + new Vector2(0f, -MessageHeight),
-            message.Color);
+        Vector2 anchor = cartEntity.Position.ToScreenSpace() + new Vector2(0f, -MessageHeight);
+        if (message.Type == TextType.Pickup) {
+            // pickup text hangs down from its anchor and is sized in screen pixels, so lifting it by its height in world units keeps its bottom line at MessageHeight at every zoom
+            float height = PixelSpriteFont.ArialPixel.MeasureString(message.Text).Y * ((float)Globals.InterfaceScale / Globals.CameraScale);
+            PickupTextManager.AddNewText(message.Text, anchor - new Vector2(0f, height), message.Color);
+        }
+        else {
+            FloatingTextSystem.AddNewFloatText(message.Text, anchor, message.Color);
+        }
     }
 
     internal static void ResetForWorldLoad() {

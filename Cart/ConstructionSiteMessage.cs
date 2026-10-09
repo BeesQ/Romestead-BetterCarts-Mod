@@ -67,7 +67,7 @@ internal static class ConstructionSiteMessage {
                 current = ahead;
                 continue;
             }
-            return PlayerServerManager.IsPlayerEntity(entity);
+            return true;
         }
         return false;
     }

@@ -19,5 +19,4 @@ internal static class ConstructionSiteMessagePatch {
             }
         }
     }
-
 }

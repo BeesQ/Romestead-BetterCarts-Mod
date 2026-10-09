@@ -19,5 +19,4 @@ internal static class CartDisconnect {
         }
         OverlayText.Show(OverlayText.Disconnect, cartEntity);
     }
-
 }

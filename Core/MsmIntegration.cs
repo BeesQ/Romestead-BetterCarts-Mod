@@ -94,7 +94,7 @@ internal static class MsmIntegration {
         SetMember(options, "Author", "BeesQ");
         string description = "Better Carts makes hauling with Carts more pleasant with quality-of-life features, all configurable in-game";
         if (FeatureLoader.Failed.Count > 0) {
-            description += "\nNot loaded: " + string.Join(", ", FeatureLoader.Failed) + ". Details in BepInEx/LogOutput.log";
+            description += "\n\nNot loaded: " + string.Join(", ", FeatureLoader.Failed) + ". Details in BepInEx/LogOutput.log";
         }
         SetMember(options, "Description", description);
         SetMember(options, "NexusModsId", 91);

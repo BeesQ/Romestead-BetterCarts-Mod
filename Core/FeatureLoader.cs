@@ -33,7 +33,7 @@ internal static class FeatureLoader {
     }
 
     internal static void LoadAll() {
-        // every [HarmonyPatch] class must be listed here, or it is never applied
+        // every feature's [HarmonyPatch] class must be listed here, or it is never applied
         Feature[] features = {
             new Feature("Chain Overflow", ModConfig.LoadChainOverflow, typeof(ChainOverflowPatch), typeof(CartAccess)),
             // Cart Capacity's reach fallback lives in this patch, so it also loads for Cart Capacity
@@ -55,6 +55,9 @@ internal static class FeatureLoader {
             if (feature.Wanted()) {
                 Load(feature);
             }
+        }
+        if (FailedNames.Count > 0) {
+            LoadFailureNotice();
         }
     }
 
@@ -86,8 +89,22 @@ internal static class FeatureLoader {
             feature.Fail();
             FailedNames.Add(feature.Name);
             ModLog.Error(feature.Name + " failed to load and is turned off for this session, usually because a game update"
-                + " changed what it patches. The other features are not affected; the cause follows.");
+                + " changed what it patches. The other features are not affected; the cause follows:");
             ModLog.Fault("FeatureLoader." + id, ex);
+        }
+    }
+
+    private static void LoadFailureNotice() {
+        Harmony harmony = new Harmony(BetterCartsPlugin.PluginGuid + ".FailureNotice");
+        try {
+            List<Type> types = new List<Type>();
+            AddWithNested(typeof(FailureNoticePatch), types);
+            foreach (Type type in types) {
+                harmony.CreateClassProcessor(type).Patch();
+            }
+        }
+        catch (Exception ex) {
+            ModLog.Fault("FeatureLoader.FailureNotice", ex);
         }
     }
 

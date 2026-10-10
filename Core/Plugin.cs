@@ -1,7 +1,6 @@
 using System.Runtime.Versioning;
 using BepInEx;
 using BepInEx.NET.Common;
-using HarmonyLib;
 
 [assembly: RequiresPreviewFeatures]
 
@@ -16,8 +15,8 @@ public class BetterCartsPlugin : BasePlugin {
     public override void Load() {
         ModLog.Init(Log);
         ModConfig.Init(Config);
+        FeatureLoader.LoadAll();
         MsmIntegration.Init(Log, Config);
-        new Harmony(PluginGuid).PatchAll();
         Log.LogInfo(PluginName + " " + PluginVersion + " loaded.");
         CartCapacity.LogStartup();
     }

@@ -224,6 +224,10 @@ internal static class ModConfig {
             Value = !troubleshooting || entry.Value;
         }
 
-        internal bool Value { get; }
+        internal bool Value { get; private set; }
+
+        internal void Fail() {
+            Value = false;
+        }
     }
 }

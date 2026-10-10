@@ -92,7 +92,11 @@ internal static class MsmIntegration {
         object options = Activator.CreateInstance(optionsType);
         SetMember(options, "Version", BetterCartsPlugin.PluginVersion);
         SetMember(options, "Author", "BeesQ");
-        SetMember(options, "Description", "Better Carts makes hauling with Carts more pleasant with quality-of-life features, all configurable in-game");
+        string description = "Better Carts makes hauling with Carts more pleasant with quality-of-life features, all configurable in-game";
+        if (FeatureLoader.Failed.Count > 0) {
+            description += "\nNot loaded: " + string.Join(", ", FeatureLoader.Failed) + ". Details in BepInEx/LogOutput.log";
+        }
+        SetMember(options, "Description", description);
         SetMember(options, "NexusModsId", 91);
         SetMember(options, "ThunderstoreTeam", "BeesQ");
         SetMember(options, "ThunderstoreModName", "BetterCarts");

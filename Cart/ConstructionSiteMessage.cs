@@ -10,8 +10,9 @@ using Shared.Entity;
 namespace BetterCarts;
 
 internal static class ConstructionSiteMessage {
-    // vanilla Carts react only to effect 0, so a game without Better Carts ignores this one
-    private const byte EffectId = 201;
+    // vanilla Carts react only to effect 0, so a game without Better Carts ignores these
+    private const byte KeptEffectId = 201;
+    private const byte StockpileEffectId = 202;
     private const int SendIntervalMs = 3000;
     private const int MaxChainWalk = 32;
 
@@ -19,27 +20,30 @@ internal static class ConstructionSiteMessage {
         public long NextSendTick;
     }
 
-    private static readonly ConditionalWeakTable<ServerCart2Controller, SendState> SendStates =
+    private static readonly ConditionalWeakTable<ServerCart2Controller, SendState> KeptStates =
+        new ConditionalWeakTable<ServerCart2Controller, SendState>();
+
+    private static readonly ConditionalWeakTable<ServerCart2Controller, SendState> StockpileStates =
         new ConditionalWeakTable<ServerCart2Controller, SendState>();
 
     internal static void NoteRefused(ServerCart2Controller cart) {
-        EntityWrapper cartEntity = cart.Entity;
-        if (cartEntity == null || cartEntity.Removed) {
-            return;
-        }
-        SendState state = SendStates.GetOrCreateValue(cart);
-        long now = Environment.TickCount64;
-        if (now < state.NextSendTick) {
-            return;
-        }
-        state.NextSendTick = now + SendIntervalMs;
-        if (PulledByPlayer(cart)) {
-            EntityServerManager.SendEntityVfxMessage(cartEntity.Id, EffectId);
-        }
+        Send(cart, KeptStates, KeptEffectId);
+    }
+
+    internal static void NoteStockpileSkipped(ServerCart2Controller cart) {
+        Send(cart, StockpileStates, StockpileEffectId);
     }
 
     internal static void NoteEffect(Cart2Controller cart, byte vfx) {
-        if (vfx != EffectId || cart == null || !OverlayText.CanShow(OverlayText.ProtectionKept)) {
+        OverlayText.Message message;
+        if (vfx == KeptEffectId) {
+            message = OverlayText.ProtectionKept;
+        } else if (vfx == StockpileEffectId) {
+            message = OverlayText.StockpileSkipped;
+        } else {
+            return;
+        }
+        if (cart == null || !OverlayText.CanShow(message)) {
             return;
         }
         EntityWrapper cartEntity = cart.Entity;
@@ -49,7 +53,23 @@ internal static class ConstructionSiteMessage {
         if (!OverlayText.PulledByLocalPlayer(cart.FollowingId.Value)) {
             return;
         }
-        OverlayText.Show(OverlayText.ProtectionKept, cartEntity);
+        OverlayText.Show(message, cartEntity);
+    }
+
+    private static void Send(ServerCart2Controller cart, ConditionalWeakTable<ServerCart2Controller, SendState> states, byte effectId) {
+        EntityWrapper cartEntity = cart.Entity;
+        if (cartEntity == null || cartEntity.Removed) {
+            return;
+        }
+        SendState state = states.GetOrCreateValue(cart);
+        long now = Environment.TickCount64;
+        if (now < state.NextSendTick) {
+            return;
+        }
+        state.NextSendTick = now + SendIntervalMs;
+        if (PulledByPlayer(cart)) {
+            EntityServerManager.SendEntityVfxMessage(cartEntity.Id, effectId);
+        }
     }
 
     private static bool PulledByPlayer(ServerCart2Controller cart) {

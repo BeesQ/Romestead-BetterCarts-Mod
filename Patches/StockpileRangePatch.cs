@@ -135,6 +135,7 @@ internal static class StockpileRangePatch {
                 collisions.GetEntitiesInRectangleArea(takeZone, ReuseList);
                 ServerCart2Controller bestCart = null;
                 float bestCartDistanceSquared = float.MaxValue;
+                ServerCart2Controller siteCart = null;
                 foreach (EntityWrapper candidate in ReuseList) {
                     if (candidate.Removed || candidate.PositionZ > MaxTakeZ) {
                         continue;
@@ -145,6 +146,10 @@ internal static class StockpileRangePatch {
                     if (!IsEligible(cart, whilePulled, whileParked) || !HasChainCapacity(cart)) {
                         continue;
                     }
+                    if (IsOnProtectedSite(cart)) {
+                        siteCart = cart;
+                        continue;
+                    }
                     float distanceSquared = Vector2.DistanceSquared(candidate.Position2, stackCenter);
                     if (distanceSquared < bestCartDistanceSquared) {
                         bestCartDistanceSquared = distanceSquared;
@@ -152,6 +157,9 @@ internal static class StockpileRangePatch {
                     }
                 }
                 if (bestCart == null) {
+                    if (siteCart != null) {
+                        ConstructionSiteMessage.NoteStockpileSkipped(siteCart);
+                    }
                     return;
                 }
                 ReuseTake[0] = new ResourceAmount { ResourceId = solidResourceId, Amount = 1 };
@@ -257,6 +265,7 @@ internal static class StockpileRangePatch {
         ServerCart2Controller bestCart = null;
         ServerBucketController bestBucket = null;
         float bestCartDistanceSquared = float.MaxValue;
+        ServerCart2Controller siteCart = null;
         foreach (EntityWrapper candidate in ReuseList) {
             if (candidate.Removed || candidate.PositionZ > MaxTakeZ) {
                 continue;
@@ -271,6 +280,10 @@ internal static class StockpileRangePatch {
             if (bucket == null) {
                 continue;
             }
+            if (IsOnProtectedSite(cart)) {
+                siteCart = cart;
+                continue;
+            }
             float distanceSquared = Vector2.DistanceSquared(candidate.Position2, vatCenter);
             if (distanceSquared < bestCartDistanceSquared) {
                 bestCartDistanceSquared = distanceSquared;
@@ -279,6 +292,9 @@ internal static class StockpileRangePatch {
             }
         }
         if (bestCart == null) {
+            if (siteCart != null) {
+                ConstructionSiteMessage.NoteStockpileSkipped(siteCart);
+            }
             return;
         }
         ReuseTake[0] = new ResourceAmount { ResourceId = bucketResourceId, Amount = 1 };
@@ -369,10 +385,13 @@ internal static class StockpileRangePatch {
     }
 
     private static bool IsEligible(ServerCart2Controller cart, bool whilePulled, bool whileParked) {
-        if (ConstructionSiteProtection.Active && ConstructionSiteProtection.IsOnSite(cart.Entity)) {
-            return false;
-        }
         return IsChainPulled(cart) ? whilePulled : whileParked;
+    }
+
+    // test only once the Cart is known to want the item, or the site message fires for Carts that would take nothing
+    private static bool IsOnProtectedSite(ServerCart2Controller cart) {
+        return ConstructionSiteProtection.Active && !ServerGameState.Config.DisableConstructionMaterialRequirements
+            && ConstructionSiteProtection.IsOnSite(cart.Entity);
     }
 
     private static bool IsChainPulled(ServerCart2Controller cart) {

@@ -131,7 +131,7 @@ internal static class ModConfig {
             new ConfigDescription("Drops a Cart's excess cargo beside it the first time the Cart is near a player after a world loads. If disabled, excess cargo remains until manually unloaded.", null,
                 EntryTag("Eject Overflow", 1, hidden: !CartCapacityEnabled.Value))));
         CartCapacityBlessingBonus = Track(config.Bind("Cart Capacity", "Blessing Bonus", 1,
-            new ConfigDescription("Extra capacity granted by the Mercury blessing.", new AcceptableValueRange<int>(0, 64),
+            new ConfigDescription("Extra capacity granted by the Mercury blessing. The default is 1.", new AcceptableValueRange<int>(0, 64),
                 EntryTag("Blessing Bonus", 2, hidden: !CartCapacityEnabled.Value))));
         CartCapacity.BindTypeEntries(config);
         CartOverlaysEnabled = Track(config.Bind("Cart Overlays", "Enabled", true,

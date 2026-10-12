@@ -24,7 +24,7 @@ internal static class CartCapacity {
     private const int DefaultCapacity = 4;
     private const int SliderMax = 64;
     private const string SectionName = "Cart Capacity";
-    private const string EntryDescription = "The default capacity of this cart is 4.";
+    private const string EntryDescription = "The default capacity of this Cart is 4.";
 
     private static readonly CartTypeRecord[] Types = {
         new CartTypeRecord { Id = new Guid("5af0ea10-21de-404a-a869-b0079653ee0b"), Name = "Wooden Cart" },

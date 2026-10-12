@@ -1,3 +1,13 @@
+## 1.6.0
+
+- Added Construction Site Protection (on by default): Carts leave loose materials that a Construction Site still needs. Spare materials and items the site does not need can still be picked up
+- Added the protection message: a Cart that Construction Site Protection keeps from taking an item now says so, once per world load, shown to the player pulling it (client-side, applies per player with the mod)
+- Stockpile Range skips a Cart standing on a Construction Site while the protection is on
+- If a game update breaks one feature, only that feature now turns off. Mod Settings Menu and chat say which one has been turned off
+- Updated the Mod Settings Menu dependency to 1.1.3 (Better Carts' settings now appear in the main menu only)
+- Troubleshooting Mode's Save Watch now needs a restart
+- Small text changes
+
 ## 1.5.0
 
 - Updated to Romestead 0.26.2

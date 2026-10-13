@@ -61,7 +61,7 @@ internal static class OverlayText {
     internal static readonly Message ProtectionKept = new Message("Construction Site Protection is ON,\ncan't pick up this item",
         StyleHelper.TextGreenColor, duration: 5f, scale: 1f, oncePerWorldLoad: true, () => ModConfig.CartOverlayProtectionMessage);
 
-    internal static readonly Message StockpileSkipped = new Message("Construction Site Protection is ON,\ncan't pick items from stockpiles\nwhen the Cart is on a Construction Site",
+    internal static readonly Message StockpileSkipped = new Message("Construction Site Protection is ON,\ncan't pick items from Stockpiles\nwhen the Cart is on a Construction Site",
         StyleHelper.TextGreenColor, duration: 6f, scale: 1f, oncePerWorldLoad: true, () => ModConfig.CartOverlayProtectionMessage);
 
     private static readonly Message[] Messages = { Disconnect, ProtectionKept, StockpileSkipped };

@@ -34,6 +34,10 @@ internal static class ConnectRangePatch {
 
     private static bool Prepare() { return ModConfig.LoadConnectRange.Value; }
 
+    internal static bool IsMoving(ServerCart2Controller controller) {
+        return Speeds.TryGetValue(controller, out SpeedHolder holder) && holder.MoveSpeed > 0f;
+    }
+
     private static void Postfix(ServerCart2Controller __instance) {
         try {
             if (__instance == null) {

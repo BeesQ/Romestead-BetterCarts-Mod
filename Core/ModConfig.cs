@@ -11,6 +11,7 @@ internal static class ModConfig {
     internal static LoadSwitch LoadCartCapacity;
     internal static LoadSwitch LoadCartOverlays;
     internal static LoadSwitch LoadConstructionSiteProtection;
+    internal static LoadSwitch LoadCartPush;
     internal static LoadSwitch LoadCollectRange;
     internal static LoadSwitch LoadDepositRange;
     internal static LoadSwitch LoadConnectRange;
@@ -34,6 +35,7 @@ internal static class ModConfig {
     internal static ConfigEntry<bool> CartOverlayDisconnectMessage;
     internal static ConfigEntry<bool> CartOverlayProtectionMessage;
     internal static ConfigEntry<bool> ConstructionSiteProtectionEnabled;
+    internal static ConfigEntry<bool> CartPushEnabled;
     internal static ConfigEntry<bool> StockpileRangeEnabled;
     internal static ConfigEntry<int> StockpileRange;
     internal static ConfigEntry<bool> StockpileWhilePulled;
@@ -56,10 +58,10 @@ internal static class ModConfig {
     internal static void Init(ConfigFile config) {
         Bound.Clear();
         // bound first because the Load switches and every Troubleshooting entry read it for their hidden tags
-        // BepInEx writes the .cfg sorted alphabetically by section, so this name is what puts the section at the bottom of the file; Order 11 puts it last in Mod Settings Menu as well
+        // BepInEx writes the .cfg sorted alphabetically by section, so this name is what puts the section at the bottom of the file; Order 12 puts it last in Mod Settings Menu as well
         TroubleshootingEnabled = Track(config.Bind("Troubleshooting", "Enabled", false,
             new ConfigDescription("Shows the diagnostic settings below and a Load switch for each feature in General. Load switches apply only while this is on. Requires a restart.", null,
-                SectionTag("Troubleshooting", 11), EntryTag("Troubleshooting Mode (needs restart)", 0))));
+                SectionTag("Troubleshooting", 12), EntryTag("Troubleshooting Mode (needs restart)", 0))));
         bool troubleshooting = TroubleshootingEnabled.Value;
         Enabled = Track(config.Bind("General", "Enabled", true,
             new ConfigDescription("Enables all mod features.", null,
@@ -82,40 +84,43 @@ internal static class ModConfig {
         LoadConstructionSiteProtection = new LoadSwitch(Track(config.Bind("General", "Load Construction Site Protection", true,
             new ConfigDescription("Loads Construction Site Protection when the game starts. When disabled, the feature is not loaded at all. Applies only while Troubleshooting Mode is on. Requires a restart.", null,
                 EntryTag("Load Construction Site Protection (needs restart)", 6, hidden: !troubleshooting)))), troubleshooting);
+        LoadCartPush = new LoadSwitch(Track(config.Bind("General", "Load Cart Push", true,
+            new ConfigDescription("Loads Cart Push when the game starts. When disabled, the feature is not loaded at all. Applies only while Troubleshooting Mode is on. Requires a restart.", null,
+                EntryTag("Load Cart Push (needs restart)", 7, hidden: !troubleshooting)))), troubleshooting);
         LoadCollectRange = new LoadSwitch(Track(config.Bind("General", "Load Collect Range", true,
             new ConfigDescription("Loads Collect Range when the game starts. When disabled, the feature is not loaded at all. Applies only while Troubleshooting Mode is on. Requires a restart.", null,
-                EntryTag("Load Collect Range (needs restart)", 7, hidden: !troubleshooting)))), troubleshooting);
+                EntryTag("Load Collect Range (needs restart)", 8, hidden: !troubleshooting)))), troubleshooting);
         LoadDepositRange = new LoadSwitch(Track(config.Bind("General", "Load Deposit Range", true,
             new ConfigDescription("Loads Deposit Range when the game starts. When disabled, the feature is not loaded at all. Applies only while Troubleshooting Mode is on. Requires a restart.", null,
-                EntryTag("Load Deposit Range (needs restart)", 8, hidden: !troubleshooting)))), troubleshooting);
+                EntryTag("Load Deposit Range (needs restart)", 9, hidden: !troubleshooting)))), troubleshooting);
         LoadConnectRange = new LoadSwitch(Track(config.Bind("General", "Load Connect Range", true,
             new ConfigDescription("Loads Connect Range when the game starts. When disabled, the feature is not loaded at all. Applies only while Troubleshooting Mode is on. Requires a restart.", null,
-                EntryTag("Load Connect Range (needs restart)", 9, hidden: !troubleshooting)))), troubleshooting);
+                EntryTag("Load Connect Range (needs restart)", 10, hidden: !troubleshooting)))), troubleshooting);
         LoadStockpileRange = new LoadSwitch(Track(config.Bind("General", "Load Stockpile Range", true,
             new ConfigDescription("Loads Stockpile Range when the game starts. When disabled, the feature is not loaded at all. Applies only while Troubleshooting Mode is on. Requires a restart.", null,
-                EntryTag("Load Stockpile Range (needs restart)", 10, hidden: !troubleshooting)))), troubleshooting);
+                EntryTag("Load Stockpile Range (needs restart)", 11, hidden: !troubleshooting)))), troubleshooting);
         ChainOverflowEnabled = Track(config.Bind("Chain Overflow", "Enabled", true,
             new ConfigDescription("Passes items picked up by a full Cart to the next Cart in the chain with a free slot.", null,
                 SectionTag("Chain Overflow", 1), EntryTag("Pass overflow along the chain", 0))));
         CollectRangeEnabled = Track(config.Bind("Collect Range", "Enabled", true,
             new ConfigDescription("Carts automatically pick up loose items within range.", null,
-                SectionTag("Collect Range", 7), EntryTag("Automatic pickup", 0))));
+                SectionTag("Collect Range", 8), EntryTag("Automatic pickup", 0))));
         CollectRange = Track(config.Bind("Collect Range", "Range", 2,
             new ConfigDescription("Pickup range in tiles per side. 0 = vanilla (touch only).",
                 new AcceptableValueRange<int>(0, 10),
                 EntryTag("Range", 1))));
         DepositRangeEnabled = Track(config.Bind("Deposit Range", "Enabled", true,
             new ConfigDescription("Carts deposit matching cargo into Material Storages within range.", null,
-                SectionTag("Deposit Range", 8), EntryTag("Automatic deposit", 0))));
+                SectionTag("Deposit Range", 9), EntryTag("Automatic deposit", 0))));
         DepositRange = Track(config.Bind("Deposit Range", "Range", 2,
             new ConfigDescription("Deposit range in tiles per side. 0 = vanilla (park on the storage).",
                 new AcceptableValueRange<int>(0, 10),
                 EntryTag("Range", 1))));
         ConnectRangeEnabled = Track(config.Bind("Connect Range", "Enabled", true,
-            new ConfigDescription("Pulls nearby free Carts toward the Cart you are pulling to connect them without touching.", null,
-                SectionTag("Connect Range", 9), EntryTag("Automatic connect", 0))));
+            new ConfigDescription("Pulls nearby free Carts toward the last Cart of the chain you are pulling to connect them without touching.", null,
+                SectionTag("Connect Range", 10), EntryTag("Automatic connect", 0))));
         ConnectRange = Track(config.Bind("Connect Range", "Range", 2,
-            new ConfigDescription("Connection range in tiles per side. 0 = vanilla (touch only).",
+            new ConfigDescription("Connection range in tiles per side. It grows by 1 tile for each Cart you pull, up to this value. 0 = vanilla (touch only).",
                 new AcceptableValueRange<int>(0, 10),
                 EntryTag("Range", 1))));
         GrabPriorityEnabled = Track(config.Bind("Grab Priority", "Enabled", true,
@@ -125,7 +130,7 @@ internal static class ModConfig {
             new ConfigDescription("Prevents grabbing another Cart with the same interact press used to release a Cart.", null,
                 SectionTag("Cart Release Fix", 3), EntryTag("Release without re-grabbing", 0))));
         CartCapacityEnabled = Track(config.Bind("Cart Capacity", "Enabled", true,
-            new ConfigDescription("Sets base capacity for vanilla Carts only. The Mercury blessing adds the configured bonus. High capacities may cause stutter and tall cargo stacks. Lowering capacity immediately blocks further pickup while full; excess cargo is ejected on world load if Eject Overflow is enabled. In multiplayer, host settings apply; all players need the mod to see cargo beyond the normal 4 items. Extra capacity affects saved Cart data. Before uninstalling, restore vanilla capacities and blessing bonus, keep Eject Overflow on, visit every Cart carrying extra cargo so it drops the excess, then save.", null,
+            new ConfigDescription("Sets base capacity for vanilla Carts only. The Mercury blessing adds the configured bonus. High capacities may cause stutter and tall cargo stacks. Lowering capacity immediately blocks further pickup while full; excess cargo is ejected on world load if Eject Overflow is enabled. In multiplayer, host settings apply; all players need the mod to see cargo beyond the vanilla slots. Extra capacity affects saved Cart data. Before uninstalling, restore vanilla capacities and blessing bonus, keep Eject Overflow on, visit every Cart carrying extra cargo so it drops the excess, then save.", null,
                 SectionTag("Cart Capacity", 4), EntryTag("Set capacity per Cart type", 0))));
         CartCapacityEjectOverflow = Track(config.Bind("Cart Capacity", "Eject Overflow", true,
             new ConfigDescription("Drops a Cart's excess cargo beside it the first time the Cart is near a player after a world loads. If disabled, excess cargo remains until manually unloaded.", null,
@@ -155,18 +160,21 @@ internal static class ModConfig {
         ConstructionSiteProtectionEnabled = Track(config.Bind("Construction Site Protection", "Enabled", true,
             new ConfigDescription("Carts leave loose materials that a Construction Site still needs. Spare materials and items the site does not need can still be picked up.", null,
                 SectionTag("Construction Site Protection", 6), EntryTag("Leave needed materials on Construction Sites", 0))));
+        CartPushEnabled = Track(config.Bind("Cart Push", "Enabled", true,
+            new ConfigDescription("Walking into Carts that nobody is pulling pushes them aside. In multiplayer, the host and each player who pushes need the mod.", null,
+                SectionTag("Cart Push", 7), EntryTag("Push Carts aside", 0))));
         StockpileRangeEnabled = Track(config.Bind("Stockpile Range", "Enabled", true,
-            new ConfigDescription("Carts collect resources from building output stockpiles within range. Solid resources use free slots; bucket resources fill empty Buckets.", null,
-                SectionTag("Stockpile Range", 10), EntryTag("Take from stockpiles", 0))));
+            new ConfigDescription("Carts collect resources from building output Stockpiles within range. Solid resources use free slots; bucket resources fill empty Buckets.", null,
+                SectionTag("Stockpile Range", 11), EntryTag("Take from Stockpiles", 0))));
         StockpileRange = Track(config.Bind("Stockpile Range", "Range", 2,
             new ConfigDescription("Stockpile collection range in tiles per side. 0 = disabled.",
                 new AcceptableValueRange<int>(0, 10),
                 EntryTag("Range", 1))));
         StockpileWhilePulled = Track(config.Bind("Stockpile Range", "While Pulled", true,
-            new ConfigDescription("Collects from stockpiles while a player pulls the Cart or its chain.", null,
+            new ConfigDescription("Collects from Stockpiles while a player pulls the Cart or its chain.", null,
                 EntryTag("While pulled", 2))));
         StockpileWhileParked = Track(config.Bind("Stockpile Range", "While Parked", false,
-            new ConfigDescription("Collects from stockpiles while the Cart is not being pulled.", null,
+            new ConfigDescription("Collects from Stockpiles while the Cart is not being pulled.", null,
                 EntryTag("While parked", 3))));
 
         DiagnosticLogs = Track(config.Bind("Troubleshooting", "Diagnostic Logs", true,

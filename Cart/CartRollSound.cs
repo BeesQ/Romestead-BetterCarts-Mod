@@ -39,7 +39,11 @@ internal static class CartRollSound {
         new ConditionalWeakTable<Cart2Controller, RollState>();
 
     private static bool On {
-        get { return ModConfig.Enabled.Value && ModConfig.CartPushEnabled.Value; }
+        get {
+            return ModConfig.Enabled.Value
+                && ((ModConfig.LoadCartPush.Value && ModConfig.CartPushEnabled.Value)
+                    || (ModConfig.LoadConnectRange.Value && ModConfig.ConnectRangeEnabled.Value && ModConfig.ConnectRange.Value > 0));
+        }
     }
 
     internal static void Update(Cart2Controller cart) {

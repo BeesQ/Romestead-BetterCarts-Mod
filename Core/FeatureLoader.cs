@@ -44,11 +44,13 @@ internal static class FeatureLoader {
             new Feature("Cart Overlays", ModConfig.LoadCartOverlays, typeof(CartOverlayPatch), typeof(CartDisconnectPatch),
                 typeof(ConstructionSiteMessagePatch)),
             new Feature("Construction Site Protection", ModConfig.LoadConstructionSiteProtection, typeof(ConstructionSiteProtectionPatch)),
-            new Feature("Cart Push", ModConfig.LoadCartPush, typeof(CartPushPatch), typeof(CartRollSound)),
+            new Feature("Cart Push", ModConfig.LoadCartPush, typeof(CartPushPatch)),
             new Feature("Collect Range", ModConfig.LoadCollectRange, typeof(CollectRangePatch), typeof(CartAccess)),
             new Feature("Deposit Range", ModConfig.LoadDepositRange, typeof(DepositRangePatch)),
             new Feature("Connect Range", ModConfig.LoadConnectRange, typeof(ConnectRangePatch)),
             new Feature("Stockpile Range", ModConfig.LoadStockpileRange, typeof(StockpileRangePatch)),
+            new Feature("Rolling Sound", () => ModConfig.LoadCartPush.Value || ModConfig.LoadConnectRange.Value, () => { },
+                typeof(CartRollSoundPatch), typeof(CartRollSound)),
             new Feature("Diagnostic Logs", () => ModConfig.DiagnosticsArmed, () => ModConfig.DiagnosticsArmed = false,
                 typeof(DiagnosticsPatch), typeof(ModWatchdog))
         };

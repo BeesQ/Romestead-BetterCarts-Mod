@@ -110,34 +110,4 @@ internal static class CartPushPatch {
             }
         }
     }
-
-    [HarmonyPatch(typeof(Cart2Controller), nameof(Cart2Controller.Update), typeof(GameTime))]
-    private static class RollSound {
-        private static bool Prepare() { return ModConfig.LoadCartPush.Value; }
-
-        private static void Postfix(Cart2Controller __instance) {
-            try {
-                CartRollSound.Update(__instance);
-            }
-            catch (Exception ex) {
-                ModLog.Fault("CartPushPatch.RollSound.Postfix", ex);
-                throw;
-            }
-        }
-    }
-
-    [HarmonyPatch(typeof(Cart2Controller), nameof(Cart2Controller.EntityUnload))]
-    private static class UnloadSound {
-        private static bool Prepare() { return ModConfig.LoadCartPush.Value; }
-
-        private static void Postfix(Cart2Controller __instance) {
-            try {
-                CartRollSound.Unload(__instance);
-            }
-            catch (Exception ex) {
-                ModLog.Fault("CartPushPatch.UnloadSound.Postfix", ex);
-                throw;
-            }
-        }
-    }
 }

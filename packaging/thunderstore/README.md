@@ -16,10 +16,11 @@ Better Carts makes hauling with Carts more pleasant with quality-of-life feature
 - **Cart Capacity** - set how many items the vanilla Carts can carry (0-64, default 4). The Mercury cart-capacity blessing adds a configurable bonus on top (0-64, default 1), and Eject Overflow drops anything above the limit beside the Cart when a world loads. Modded Cart types are not covered
 - **Cart Overlays** - shows information above Carts, such as the item count and a message when a Cart comes loose from the chain or Construction Site Protection keeps an item from it
 - **Construction Site Protection** - Carts leave loose materials that a Construction Site still needs. Spare materials and items the site does not need can still be picked up
+- **Cart Push** - walking into Carts that nobody is pulling pushes them aside
 - **Collect Range** - Carts automatically pick up loose items within a configurable range (0-10 tiles, default 2). 0 = vanilla
 - **Deposit Range** - Carts deposit matching cargo into Material Storages within range (0-10 tiles, default 2). 0 = vanilla
-- **Connect Range** - free Carts are pulled toward a Cart the player is pulling once in range (0-10 tiles, default 2). 0 = vanilla
-- **Stockpile Range** - Carts take resources from building output stockpiles within range, into free slots and empty Buckets on the Cart (0-10 tiles, default 2). 0 = vanilla
+- **Connect Range** - free Carts are pulled toward the last Cart of the chain the player is pulling once in range (0-10 tiles, default 2). The range grows by 1 tile for each Cart the player pulls, up to the set value. 0 = vanilla
+- **Stockpile Range** - Carts take resources from building output Stockpiles within range, into free slots and empty Buckets on the Cart (0-10 tiles, default 2). 0 = vanilla
 
 ## Configuration
 
@@ -36,13 +37,14 @@ They are installed automatically as dependencies by your mod manager
 
 ## Multiplayer
 
-The host's settings decide how the server-side features work for everyone. Every player should install the mod: without it, a joining player still gets the server-side features, but sees cargo beyond the vanilla slots lying on the ground and has none of the client-side features
+The host's settings decide how the server-side features work for everyone. Every player should install the mod: without it, a joining player still gets the server-side features, but cannot push Carts, sees cargo beyond the vanilla slots lying on the ground and has none of the client-side features
 
 **Server-side** - run by the host, with the host's settings
 
 - Chain Overflow
 - Cart Capacity - the host's values apply to everyone
 - Construction Site Protection
+- Cart Push - each player who pushes needs the mod too
 - Collect Range
 - Deposit Range
 - Connect Range
@@ -81,7 +83,7 @@ Manual:
 - High capacity values can cause stutter and stack cargo into a tall tower above the Cart
 - Before removing the mod, set every Cart type's capacity back to 4 and Blessing Bonus back to 1, keep Eject Overflow on, then load each world and visit every Cart carrying extra cargo so it drops the surplus. Save, close the game, then remove the mod. Keep a backup of the save until it loads fine without the mod
 - Deposit Range takes only matching resources from Cart cargo
-- Stockpile Range takes only from output stockpiles, a building's input storage is never drained
+- Stockpile Range takes only from output Stockpiles, a building's input storage is never drained
 - While Construction Site Protection is on, Stockpile Range does not fill a Cart standing on a Construction Site
 
 ## Known Issues
@@ -90,7 +92,7 @@ Manual:
 
 ## Bug Reports and Feedback
 
-Please submit through GitHub Issues on the source repo (see Links section)
+Please submit through [GitHub Issues](https://github.com/BeesQ/Romestead-BetterCarts-Mod/issues)
 
 ## Credits
 

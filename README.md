@@ -18,10 +18,11 @@ A [BepInEx 6 CoreCLR](https://www.nexusmods.com/romestead/mods/1) mod for game *
 - **Cart Capacity** - set how many items the vanilla Carts can carry (0-64, default 4). The Mercury cart-capacity blessing adds a configurable bonus on top (0-64, default 1), and Eject Overflow drops anything above the limit beside the Cart when a world loads. Modded Cart types are not covered
 - **Cart Overlays** - shows information above Carts, such as the item count and a message when a Cart comes loose from the chain or Construction Site Protection keeps an item from it
 - **Construction Site Protection** - Carts leave loose materials that a Construction Site still needs. Spare materials and items the site does not need can still be picked up
+- **Cart Push** - walking into Carts that nobody is pulling pushes them aside
 - **Collect Range** - Carts automatically pick up loose items within a configurable range (0-10 tiles, default 2). 0 = vanilla
 - **Deposit Range** - Carts deposit matching cargo into Material Storages within range (0-10 tiles, default 2). 0 = vanilla
-- **Connect Range** - free Carts are pulled toward a Cart the player is pulling once in range (0-10 tiles, default 2). 0 = vanilla
-- **Stockpile Range** - Carts take resources from building output stockpiles within range, into free slots and empty Buckets on the Cart (0-10 tiles, default 2). 0 = vanilla
+- **Connect Range** - free Carts are pulled toward the last Cart of the chain the player is pulling once in range (0-10 tiles, default 2). The range grows by 1 tile for each Cart the player pulls, up to the set value. 0 = vanilla
+- **Stockpile Range** - Carts take resources from building output Stockpiles within range, into free slots and empty Buckets on the Cart (0-10 tiles, default 2). 0 = vanilla
 
 ## Configuration
 
@@ -38,10 +39,11 @@ Every feature loads by default. **Troubleshooting Mode** (in the Troubleshooting
 | Cart Capacity | Enabled / Eject Overflow / Blessing Bonus / Wooden Cart / Bronze Cart | true / true / 1 / 4 / 4 | Per-Cart-type carry capacity for the vanilla Carts (0-64) |
 | Cart Overlays | Enabled / Show Above Vanilla Capacity / Show For Vanilla Capacity / Show For Empty Carts / Disconnect Message / Protection Message | true / true / false / false / true / true | Cargo count above a Cart, and a message when a Cart disconnects or Construction Site Protection keeps an item |
 | Construction Site Protection | Enabled | true | Carts leave loose materials a Construction Site still needs |
+| Cart Push | Enabled | true | Walking into Carts that nobody is pulling pushes them aside |
 | Collect Range | Enabled / Range | true / 2 | Ranged pickup of loose items (0-10 tiles, 0 = vanilla) |
 | Deposit Range | Enabled / Range | true / 2 | Ranged deposit into Material Storages (0-10 tiles, 0 = vanilla) |
-| Connect Range | Enabled / Range | true / 2 | Ranged Cart pulling (0-10 tiles, 0 = vanilla) |
-| Stockpile Range | Enabled / Range / While Pulled / While Parked | true / 2 / true / false | Take from output stockpiles into Carts (0-10 tiles, 0 = vanilla) |
+| Connect Range | Enabled / Range | true / 2 | Ranged Cart pulling, growing by 1 tile per pulled Cart (0-10 tiles, 0 = vanilla) |
+| Stockpile Range | Enabled / Range / While Pulled / While Parked | true / 2 / true / false | Take from output Stockpiles into Carts (0-10 tiles, 0 = vanilla) |
 | Troubleshooting | Enabled | false | Troubleshooting Mode for bug reports. After a restart it shows the diagnostic options and the Load switches |
 | Troubleshooting | Diagnostic Logs / Save Watch / Memory Watch / World Census / Cart Capacity / Cart Pickup / Cart Chain / Cart State Dump / Log File | true / true / false / true / true / true / true / false / false | Diagnostic logging, shown only in Troubleshooting Mode |
 | General | `Load <feature name>`, one per feature | true | Shown only in Troubleshooting Mode, where turning one off stops that feature from loading after a restart |
@@ -55,13 +57,14 @@ In the .cfg file, Wooden Cart and Bronze Cart use their type ids as keys: `5af0e
 
 ## Multiplayer
 
-The host's settings decide how the server-side features work for everyone. Every player should install the mod: without it, a joining player still gets the server-side features, but sees cargo beyond the vanilla slots lying on the ground and has none of the client-side features
+The host's settings decide how the server-side features work for everyone. Every player should install the mod: without it, a joining player still gets the server-side features, but cannot push Carts, sees cargo beyond the vanilla slots lying on the ground and has none of the client-side features
 
 **Server-side** - run by the host, with the host's settings
 
 - Chain Overflow
 - Cart Capacity - the host's values apply to everyone
 - Construction Site Protection
+- Cart Push - each player who pushes needs the mod too
 - Collect Range
 - Deposit Range
 - Connect Range
@@ -120,7 +123,7 @@ No game or loader assemblies are redistributed - they are referenced from your l
 - High capacity values can cause stutter and stack cargo into a tall tower above the Cart
 - Before removing the mod, set every Cart type's capacity back to 4 and Blessing Bonus back to 1, keep Eject Overflow on, then load each world and visit every Cart carrying extra cargo so it drops the surplus. Save, close the game, then remove the mod. Keep a backup of the save until it loads fine without the mod
 - Deposit Range takes only matching resources from Cart cargo
-- Stockpile Range takes only from output stockpiles, a building's input storage is never drained
+- Stockpile Range takes only from output Stockpiles, a building's input storage is never drained
 - While Construction Site Protection is on, Stockpile Range does not fill a Cart standing on a Construction Site
 
 ## Known Issues

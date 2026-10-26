@@ -1,3 +1,9 @@
+## 1.7.0
+
+- Added Cart Push (on by default): walking into Carts that nobody is pulling pushes them aside. In multiplayer, the host and each player who pushes need the mod
+- Carts that nobody is pulling now make the rolling sound when they move, pushed or pulled in by Connect Range (client-side, applies per player with the mod)
+- Small text changes
+
 ## 1.6.0
 
 - Added Construction Site Protection (on by default): Carts leave loose materials that a Construction Site still needs. Spare materials and items the site does not need can still be picked up

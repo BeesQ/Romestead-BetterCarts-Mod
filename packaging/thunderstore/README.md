@@ -1,9 +1,9 @@
 [![Release](https://img.shields.io/github/v/release/BeesQ/Romestead-BetterCarts-Mod?style=for-the-badge&logo=github&logoColor=white&color=blue "Latest release version&#10;Click to view GitHub Releases")](https://github.com/BeesQ/Romestead-BetterCarts-Mod/releases)
 [![Romestead](https://img.shields.io/badge/Romestead-0.26.2-blue?style=for-the-badge&logo=steam&logoColor=white "Last tested Romestead version&#10;Click to view Romestead on Steam")](https://store.steampowered.com/app/1805320/Romestead)
-[![License](https://img.shields.io/github/license/BeesQ/Romestead-BetterCarts-Mod?style=for-the-badge&logo=github&logoColor=white&color=orange "Project license&#10;Click to view LICENSE.txt")](https://raw.githubusercontent.com/BeesQ/Romestead-BetterCarts-Mod/939b0f4339ef7f592d6611eab6e476e13f23dcda/LICENSE.txt)
+[![License](https://img.shields.io/github/license/BeesQ/Romestead-BetterCarts-Mod?style=for-the-badge&logo=github&logoColor=white&color=orange "Project license&#10;Click to view LICENSE.txt")](https://raw.githubusercontent.com/BeesQ/Romestead-BetterCarts-Mod/7c913af6a80103117afd944bb19ac9090fa737ca/LICENSE.txt)
 
 <p align="center">
-  <img src="https://raw.githubusercontent.com/BeesQ/Romestead-BetterCarts-Mod/939b0f4339ef7f592d6611eab6e476e13f23dcda/packaging/assets/banner.gif" width="100%" alt="Better Carts banner">
+  <img src="https://raw.githubusercontent.com/BeesQ/Romestead-BetterCarts-Mod/7c913af6a80103117afd944bb19ac9090fa737ca/packaging/assets/banner.gif" width="100%" alt="Better Carts banner">
 </p>
 
 Better Carts makes hauling with Carts more pleasant with quality-of-life features, all configurable in-game
